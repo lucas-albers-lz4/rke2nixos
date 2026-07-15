@@ -2,34 +2,36 @@
 
 Bootstrap done: `flake.lock` pinned, `nix flake show` works, `checks.x86_64-linux.server-agent` passed on Linux with KVM.
 
-## 1. Nix in Docker locally
+## Done
 
-Run a standard image (e.g. `nixos/nix`) with flakes enabled, bind-mount this repo, and inside the container:
+### 1. Nix in Docker locally
 
 ```bash
-nix flake show
-nix build .#nixosConfigurations.example-server0.config.system.build.toplevel
+./scripts/nix-docker.sh nix flake show
+./scripts/nix-docker.sh nix build .#packages.x86_64-linux.example-server0
 ```
 
-Goal: day-to-day Nix without relying on a host Nix install.
+Uses `nixos/nix` with the repo bind-mounted. No host Nix required for eval/build.
 
-## 2. Containerized checks
+### 2. Containerized checks (v1 decision)
 
-Decide how far VM tests go in Docker:
+- **Docker:** eval and `nix build` of packages/toplevel only.
+- **QEMU checks:** host Linux + KVM only (`nix build .#checks.x86_64-linux.server-agent`). Not run in Docker or GitHub-hosted CI until nested virt is proven (`NIX_DOCKER_EXTRA_ARGS='--device /dev/kvm'` as a future experiment).
 
-- With KVM: pass `--device /dev/kvm` and re-run `.#checks.x86_64-linux.server-agent` (and later `single-node` / `three-server`).
-- Without KVM: keep heavy QEMU checks on a Linux runner with KVM; use the container for eval/`nix build` only.
+### 3. Deployable artifacts (toplevel)
 
-## 3. Build deployable artifacts in-container
+Flake packages (closures; ISO/SD/OCI later):
 
-Define flake outputs for images we ship (NixOS system closure / SD or ISO / OCI as appropriate for RKE2 hosts). Build them with `nix build` inside Docker so the recipe matches CI.
+- `.#packages.x86_64-linux.example-server0`
+- `.#packages.x86_64-linux.example-agent0`
 
-## 4. GitHub Actions
+### 4. GitHub Actions
 
-Add a workflow that uses the same Docker/Nix (or Determinate / nix-installer) path to build those image outputs on push/PR; cache the Nix store; upload artifacts.
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds those packages on push/PR, caches the Nix store, and uploads artifacts. Does not run RKE2 QEMU checks.
 
 ## 5. Later (after CI images work)
 
 - Wire sops-nix: age key in `secrets/.sops.yaml`, encrypt token, replace lab activation-script token on example hosts.
 - Smoke interactive VMs (`nix run .#example-server0-vm` / `example-agent0-vm`).
+- Disk images (ISO/SD/OCI) beyond toplevel closures.
 - Phase 2 backlog stays in README (Cilium, Pi profile, registries helper, deploy tool).

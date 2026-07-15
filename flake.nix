@@ -85,15 +85,18 @@
 
       formatter = forAllSystems (system: (mkPkgs system).nixfmt-rfc-style);
 
-      # Convenience: interactive VMs on a Linux builder
+      # toplevel closures for CI/artifacts; *-vm for interactive QEMU on a Linux builder
       packages = forAllSystems (
-        system: {
-          example-server0-vm = self.nixosConfigurations.${
-            if system == "aarch64-linux" then "example-server0-aarch64" else "example-server0"
-          }.config.system.build.vm;
-          example-agent0-vm = self.nixosConfigurations.${
-            if system == "aarch64-linux" then "example-agent0-aarch64" else "example-agent0"
-          }.config.system.build.vm;
+        system:
+        let
+          serverName = if system == "aarch64-linux" then "example-server0-aarch64" else "example-server0";
+          agentName = if system == "aarch64-linux" then "example-agent0-aarch64" else "example-agent0";
+        in
+        {
+          example-server0 = self.nixosConfigurations.${serverName}.config.system.build.toplevel;
+          example-agent0 = self.nixosConfigurations.${agentName}.config.system.build.toplevel;
+          example-server0-vm = self.nixosConfigurations.${serverName}.config.system.build.vm;
+          example-agent0-vm = self.nixosConfigurations.${agentName}.config.system.build.vm;
         }
       );
     };

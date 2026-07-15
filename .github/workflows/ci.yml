@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  eval-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@v16
+
+      - uses: DeterminateSystems/magic-nix-cache-action@v12
+
+      - name: Flake show
+        run: nix flake show
+
+      - name: Build example-server0 toplevel
+        run: nix build .#packages.x86_64-linux.example-server0 --print-build-logs
+
+      - name: Upload example-server0
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-server0-toplevel
+          path: result
+          if-no-files-found: error
+
+      - name: Build example-agent0 toplevel
+        run: nix build .#packages.x86_64-linux.example-agent0 --out-link result-agent --print-build-logs
+
+      - name: Upload example-agent0
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-agent0-toplevel
+          path: result-agent
+          if-no-files-found: error
