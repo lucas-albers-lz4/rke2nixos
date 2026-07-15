@@ -5,7 +5,6 @@
 }:
 let
   cfg = config.rke2nixos.agent;
-  defaults = config.rke2nixos;
 in
 {
   options.rke2nixos.agent = {
@@ -76,7 +75,6 @@ in
     services.rke2 = {
       enable = true;
       role = "agent";
-      package = defaults.package;
       serverAddr = cfg.joinUrl;
       tokenFile = cfg.tokenFile;
       token = cfg.token;

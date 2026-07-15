@@ -15,15 +15,18 @@ It does **not** reimplement the RKE2 systemd unit.
 
 ## Quick start
 
+Flakes need `nix-command` and `flakes` enabled (via nix.conf, or `--extra-experimental-features 'nix-command flakes'`). Prefer Nix-in-Docker for day-to-day work — see [TODO.md](TODO.md).
+
 ```bash
 # Requires Nix (Linux builder for VM tests; macOS can evaluate / cross via linux-builder)
-nix flake update   # creates flake.lock on first run
+# flake.lock is already present after the first nix flake update
+nix flake update
 nix flake show
 
 # Evaluate example configs
 nix build .#nixosConfigurations.example-server0.config.system.build.toplevel
 
-# QEMU checks (Linux only; heavy — downloads RKE2 airgap images)
+# QEMU checks (Linux only; heavy — downloads RKE2 airgap images; needs KVM)
 nix build .#checks.x86_64-linux.server-agent
 nix build .#checks.x86_64-linux.single-node
 nix build .#checks.x86_64-linux.three-server
@@ -118,6 +121,8 @@ Not implemented yet — intentional backlog:
 
 ## Platform notes
 
+- **CI / containers:** preferred path for reproducible builds is Nix-in-Docker (and later GitHub Actions), not a bare-metal Nix install. Steps live in [TODO.md](TODO.md).
+- **Linux KVM (QEMU checks):** builders need `/dev/kvm` (put `nixbld*` in the `kvm` group; set `extra-sandbox-paths = /dev/kvm` in nix.conf). Without KVM, QEMU falls back to TCG and RKE2 tests are impractical.
 - **macOS:** flake evaluation works once Nix is installed; `nixosTest` / `build.vm` need a Linux builder (CI, remote, or nix-darwin linux-builder + binfmt for aarch64).
 - **CNI:** v1 defaults to **canal**. Cilium is phase 2.
 - **Upstream:** bump RKE2 with `nix flake update` (nixpkgs update scripts handle package bumps).
