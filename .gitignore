@@ -1,0 +1,10 @@
+result
+result-*
+.direnv/
+.pre-commit-config.yaml
+*.qcow2
+*.img
+secrets/*.yaml
+!secrets/.sops.yaml
+!secrets/rke2-token.enc.yaml
+.DS_Store
