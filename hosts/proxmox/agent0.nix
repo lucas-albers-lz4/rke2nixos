@@ -1,5 +1,5 @@
 # Proxmox agent (baked qcow2).
-{ config, ... }:
+{ config, pkgs, ... }:
 let
   settings = import ./settings.nix;
 in
@@ -11,6 +11,8 @@ in
   ];
 
   networking.hostName = "agent0";
+
+  environment.systemPackages = [ pkgs.vim ];
 
   users.users.root.openssh.authorizedKeys.keys = settings.adminSshKeys;
 

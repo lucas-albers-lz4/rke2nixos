@@ -21,7 +21,13 @@ fi
 echo "Deploying flake config '$CONFIG' → $TARGET"
 echo "RKE2 state under /var/lib/rancher/rke2 is left intact across generations."
 
-exec nixos-rebuild switch \
+rebuild=(nixos-rebuild)
+if ! command -v nixos-rebuild >/dev/null 2>&1; then
+  # Workstation may only have the nix CLI (common with Determinate / multi-user nix).
+  rebuild=(nix shell nixpkgs#nixos-rebuild -c nixos-rebuild)
+fi
+
+exec "${rebuild[@]}" switch \
   --flake "$ROOT#$CONFIG" \
   --target-host "$TARGET" \
   --use-remote-sudo

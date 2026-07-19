@@ -59,9 +59,50 @@ set +a
 
 Use VMIDs in the reserved range (`PROXMOX_VMID_START` …). Always pass/`PROXMOX_POOL` so allocate checks hit the pool ACL.
 
+## Node SSH ops user (`qm guest`)
+
+API tokens cannot run local `qm`. For guest IP discovery, create a **Linux** user on each Proxmox node (accounts are per-node, not cluster-wide).
+
+Lab nodes:
+
+| Node | SSH |
+|------|-----|
+| L11 | `rke2ops@192.168.1.11` |
+| L12 | `rke2ops@192.168.1.12` |
+
+One-time as **root** on each node:
+
+```bash
+OPS_USER=rke2ops
+OPS_PUBKEY='PASTE_YOUR_WORKSTATION_ED25519_PUBKEY_HERE'
+
+adduser --disabled-password --gecos 'rke2nixos qm ops' "$OPS_USER"
+install -d -m 700 -o "$OPS_USER" -g "$OPS_USER" "/home/${OPS_USER}/.ssh"
+printf '%s\n' "$OPS_PUBKEY" > "/home/${OPS_USER}/.ssh/authorized_keys"
+chown "$OPS_USER:$OPS_USER" "/home/${OPS_USER}/.ssh/authorized_keys"
+chmod 600 "/home/${OPS_USER}/.ssh/authorized_keys"
+
+cat > /etc/sudoers.d/rke2ops-qm <<EOF
+${OPS_USER} ALL=(root) NOPASSWD: /usr/sbin/qm guest *, /usr/sbin/qm status *, /usr/sbin/qm list, /usr/sbin/qm config *
+EOF
+chmod 440 /etc/sudoers.d/rke2ops-qm
+visudo -cf /etc/sudoers.d/rke2ops-qm
+```
+
+Discover guest IPs (**on the node that owns the VM** — today L11 for 200/201):
+
+```bash
+ssh rke2ops@192.168.1.11 'sudo qm list'
+ssh rke2ops@192.168.1.11 'sudo qm guest cmd 200 network-get-interfaces'
+ssh rke2ops@192.168.1.11 'sudo qm guest cmd 201 network-get-interfaces'
+```
+
+Parse `ens18` IPv4 addresses; skip `lo`, `10.42.*`, and cali/flannel. Prefer sticky lab IPs (`.24` / `.25`) when present alongside DHCP.
+
 ## Still needs a human once
 
 - First run of `proxmox-create-deploy-role.sh` as **root**
+- Creating the `rke2ops` Linux user + sudoers on each node (above)
 - Injecting `secrets/age.key` into guests (cloud-init / mount) — guest root, not Proxmox root
 - If `UPLOAD_STORAGE=local` is full or not a Directory type, point it at another dir storage the role can write
 
