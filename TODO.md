@@ -43,21 +43,30 @@ Canonical draft (revised after [issue #1](https://github.com/lucas-albers-lz4/rk
 
 | VMID | Role | Node | MEM | ens18 IPv4 |
 |------|------|------|-----|------------|
-| 200 | server0 | L11 | 3072 | sticky `.24` + DHCP `.32` |
-| 201 | agent0 | L11 | 2048 | sticky `.25` + DHCP `.33` |
-| 202 | server1 | L7 | 3072 | DHCP `.36` |
-| 203 | server2 | L8 | 3072 | DHCP `.35` |
+| 200 | server0 | L11 | 3072 | **static** `.32` |
+| 201 | agent0 | L11 | 2048 | DHCP `.33` + sticky `.25` (Campaign 3) |
+| 202 | server1 | L7 | 3072 | **static** `.36` |
+| 203 | server2 | L8 | 3072 | **static** `.35` |
 
-**Hypervisors:** L11=`192.168.1.11`, L7=`.7`, L8=`.8`, L9=`.9` (spare). **L12** unused for lab (low memory).
+**Hypervisors:** L11=`192.168.1.11`, L7=`.7`, L8=`.8`, L9=`.9` (spare). **L12** unused for lab.
 
-- Sticky bootstrap: `192.168.1.24` — still valid
-- **Cluster VIP:** `192.168.1.29` (keepalived unicast; do not use `.20` — LAN conflict)
-- Guest SSH: `root@192.168.1.{24,25,36,35}`
+- Break-glass bootstrap: `192.168.1.32` (`bootstrapHost`)
+- **Cluster VIP:** `192.168.1.29` (keepalived unicast)
+- Guest SSH (CPs): `root@192.168.1.{32,36,35}`
 - Inventory: [`hosts/proxmox/inventory.nix`](hosts/proxmox/inventory.nix)
 
-## Paused — next runway
+### Addressing campaigns (2026-07-19)
 
-Phase B pin/VIP/R6 live work completed. Later: optional thin `upgrade-rke2` CLI, host generator, Cilium (Phase D).
+| Campaign | Status | Notes |
+|----------|--------|-------|
+| 1 CP static | **Done** | One IPv4 per CP via [`static-address.nix`](hosts/proxmox/static-address.nix); cloud-init net cleared; `.24` dual-stack removed |
+| 2 VIP failover | **Done** | VIP moves to server1 in ~1s; `/cacerts` OK from cluster nodes. Laptop path to VIP only reliable when VIP is on L11 (lab routing) |
+| 3 Agent DHCP vs sticky | Pending | Next sprint |
+| 4 DHCP CP chaos | Deferred | After 3 |
+
+## Next runway
+
+Campaign 3 (agent addressing matrix), then optional thin `upgrade-rke2` CLI / host generator / Cilium (Phase D).
 
 
 ## Phase 2 / design Phase D (deferred — not on R1–R7 path)

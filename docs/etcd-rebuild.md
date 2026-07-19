@@ -3,7 +3,11 @@
 Once you run three servers, etcd quorum is real. Node replacement is not
 "reinstall and hope" — membership must be cleaned up from a surviving CP.
 
-Join URL: prefer cluster VIP (`settings.clusterVip`, currently `192.168.1.29`) when keepalived is enabled; sticky `bootstrapHost` remains valid. Avoid `192.168.1.20` on this LAN (conflicts with another device).
+Join URL: prefer cluster VIP (`settings.clusterVip`, currently `192.168.1.29`) when keepalived is enabled; sticky `bootstrapHost` (`settings.server0Ip`) remains break-glass. Avoid `192.168.1.20` on this LAN (conflicts with another device).
+
+Control-plane guests use **static** ens18 addresses via [`hosts/proxmox/static-address.nix`](../hosts/proxmox/static-address.nix) (Campaign 1). Do not rely on DHCP for CPs.
+
+VIP failover (Campaign 2): stopping keepalived on the MASTER moves the VIP within ~1s. Supervisor `/cacerts` remains reachable **from other cluster nodes**. From some workstations, VIP reachability may depend on which Proxmox node holds the VIP (lab L2/routing asymmetry) — verify with `curl -sk https://<vip>:9345/cacerts` from a CP, not only from the laptop.
 
 ## Grow to quorum
 

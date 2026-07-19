@@ -67,9 +67,9 @@ Lab nodes (usable for rke2nixos guests):
 
 | Node | SSH | Notes |
 |------|-----|-------|
-| L11 | `rke2ops@192.168.1.11` | server0 (200), agent0 (201) |
-| L7 | `rke2ops@192.168.1.7` | server1 (202) target |
-| L8 | `rke2ops@192.168.1.8` | server2 (203) target |
+| L11 | `rke2ops@192.168.1.11` | server0 (200, static `.32`), agent0 (201) |
+| L7 | `rke2ops@192.168.1.7` | server1 (202, static `.36`) |
+| L8 | `rke2ops@192.168.1.8` | server2 (203, static `.35`) |
 | L9 | `rke2ops@192.168.1.9` | spare capacity |
 | L12 | `rke2ops@192.168.1.12` | **Unused for lab** (insufficient memory) |
 

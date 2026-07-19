@@ -4,7 +4,7 @@
   controlPlanes = [
     {
       config = "proxmox-server0";
-      target = "root@192.168.1.24";
+      target = "root@192.168.1.32";
       nodeName = "server0";
       bootstrap = true;
     }
@@ -25,6 +25,7 @@
   agents = [
     {
       config = "proxmox-agent0";
+      # Campaign 3: still DHCP/sticky dual — leave until agent matrix sprint.
       target = "root@192.168.1.25";
       nodeName = "agent0";
     }
