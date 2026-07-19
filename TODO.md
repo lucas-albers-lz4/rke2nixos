@@ -24,11 +24,15 @@
 | 3 | Join server1/server2; etcd replace drill | **Open — next when returning to this runway** |
 | 4 | `./scripts/deploy-host.sh` no-wipe day-2 | Done (vim on proxmox-server0/agent0) |
 
-## Design / architect review (in progress)
+## Design / architect review
 
-Canonical draft for external review of guidelines and day-2/upgrade philosophy:
+Canonical draft (revised after [issue #1](https://github.com/lucas-albers-lz4/rke2nixos/issues/1)):
 
 - [docs/design/operating-model-and-upgrades.md](docs/design/operating-model-and-upgrades.md)
+
+**Locked decisions (summary):** `nixpkgs-rke2` flake input as the RKE2 pin; VIP/LB promoted to Phase B (ahead of Cilium); rolling = scripted inventory for v1; hand-written hosts through live R6; SSH remains first-class.
+
+**Next design follow-on (Phase B, not blocking design acceptance):** land `nixpkgs-rke2` in `flake.nix`, CI lockfile guard, `rolling-upgrade.sh`, then VIP bridge.
 
 ## Paused — resume here (live R6)
 
@@ -70,11 +74,15 @@ Paused for unrelated planning/design work. When returning, the next runway item 
 4. Optional: etcd member replace drill on a non-bootstrap CP
 5. Mark checklist item 3 Done
 
-## Phase 2 (deferred — not on R1–R7 path)
+## Phase 2 / design Phase D (deferred — not on R1–R7 path)
+
+Aligned with [docs/design/operating-model-and-upgrades.md](docs/design/operating-model-and-upgrades.md) §8:
 
 - Cilium + `disable-kube-proxy` + HelmChartConfig
 - Raspberry Pi / `nixos-hardware`
 - `registries.yaml` helper
 - deploy-rs / colmena (optional; nixos-rebuild is enough for R7)
-- VIP/LB for join URL
+- Mandatory host generation from a node list (optional generator may land earlier in Phase B)
 - QEMU checks in Docker / GitHub-hosted CI
+
+**Moved earlier (design Phase B — before durable HA join):** VIP/LB for join URL (flake-declared); see design doc. Until then: sticky `bootstrapHost` + runbook; no production claim on sticky-host join.
