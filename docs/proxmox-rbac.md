@@ -102,7 +102,7 @@ ssh rke2ops@192.168.1.7  'sudo qm guest cmd 202 network-get-interfaces'  # after
 ssh rke2ops@192.168.1.8  'sudo qm guest cmd 203 network-get-interfaces'
 ```
 
-Parse `ens18` IPv4 addresses; skip `lo`, `10.42.*`, and cali/flannel. Prefer sticky lab IPs (`.24` / `.25`) when present alongside DHCP.
+Parse `ens18` IPv4 addresses; skip `lo`, `10.42.*`, and cali/flannel. Lab guests are static (CPs `.32`/`.36`/`.35`, agent `.25`); ignore any leftover DHCP secondary if present.
 
 ### Targeting a specific Proxmox node on import
 

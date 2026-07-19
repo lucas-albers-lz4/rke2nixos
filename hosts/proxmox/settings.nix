@@ -12,6 +12,9 @@
   server1Ip = "192.168.1.36";
   server2Ip = "192.168.1.35";
 
+  # Lab agent static address (Campaign 3 default after matrix).
+  agent0Ip = "192.168.1.25";
+
   gateway = "192.168.1.1";
 
   adminSshKeys = [

@@ -44,7 +44,7 @@ Canonical draft (revised after [issue #1](https://github.com/lucas-albers-lz4/rk
 | VMID | Role | Node | MEM | ens18 IPv4 |
 |------|------|------|-----|------------|
 | 200 | server0 | L11 | 3072 | **static** `.32` |
-| 201 | agent0 | L11 | 2048 | DHCP `.33` + sticky `.25` (Campaign 3) |
+| 201 | agent0 | L11 | 2048 | **static** `.25` (`settings.agent0Ip`) |
 | 202 | server1 | L7 | 3072 | **static** `.36` |
 | 203 | server2 | L8 | 3072 | **static** `.35` |
 
@@ -61,12 +61,12 @@ Canonical draft (revised after [issue #1](https://github.com/lucas-albers-lz4/rk
 |----------|--------|-------|
 | 1 CP static | **Done** | One IPv4 per CP via [`static-address.nix`](hosts/proxmox/static-address.nix); cloud-init net cleared; `.24` dual-stack removed |
 | 2 VIP failover | **Done** | VIP moves to server1 in ~1s; `/cacerts` OK from cluster nodes. Laptop path to VIP only reliable when VIP is on L11 (lab routing) |
-| 3 Agent DHCP vs sticky | Pending | Next sprint |
-| 4 DHCP CP chaos | Deferred | After 3 |
+| 3 Agent DHCP vs sticky | **Done** | Baseline dual `.33`+`.25` (InternalIP `.33`). **A** static `.25`+`nodeIP` → Ready. **B** DHCP-only → `.33` Ready; deploy mid-switch loses SSH to old IP. **C** renew/bounce kept `.33` (router MAC sticky) but float risk remains. **Lab default:** static `.25` |
+| 4 DHCP CP chaos | Deferred | Optional; CP static already locked |
 
 ## Next runway
 
-Campaign 3 (agent addressing matrix), then optional thin `upgrade-rke2` CLI / host generator / Cilium (Phase D).
+Optional Campaign 4 (DHCP CP chaos), thin `upgrade-rke2` CLI / host generator / Cilium (Phase D).
 
 
 ## Phase 2 / design Phase D (deferred — not on R1–R7 path)

@@ -25,7 +25,6 @@
   agents = [
     {
       config = "proxmox-agent0";
-      # Campaign 3: still DHCP/sticky dual — leave until agent matrix sprint.
       target = "root@192.168.1.25";
       nodeName = "agent0";
     }
