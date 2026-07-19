@@ -3,6 +3,9 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # RKE2 pin (P4): bump independently via `nix flake lock --update-input nixpkgs-rke2`.
+    # Initially may share the same rev as nixpkgs; do not `follows` nixpkgs.
+    nixpkgs-rke2.url = "github:NixOS/nixpkgs/nixos-unstable";
     sops-nix = {
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -13,6 +16,7 @@
     {
       self,
       nixpkgs,
+      nixpkgs-rke2,
       sops-nix,
       ...
     }:
@@ -27,6 +31,7 @@
       forAllSystems = lib.genAttrs systems;
 
       mkPkgs = system: import nixpkgs { inherit system; };
+      mkRke2Pkgs = system: import nixpkgs-rke2 { inherit system; };
 
       nixosModules = {
         common = ./modules/common.nix;
@@ -39,6 +44,7 @@
             ./modules/cluster-defaults.nix
             ./modules/rke2-server.nix
             ./modules/rke2-agent.nix
+            ./modules/rke2-vip.nix
           ];
         };
       };
@@ -49,6 +55,7 @@
           inherit system;
           specialArgs = {
             inherit self sops-nix;
+            rke2Pkgs = mkRke2Pkgs system;
           };
           modules = [
             sops-nix.nixosModules.sops
@@ -107,6 +114,8 @@
           # Disk / ISO images are x86_64-focused for Proxmox CI artifacts.
           proxmoxServer = self.nixosConfigurations.proxmox-server0;
           proxmoxAgent = self.nixosConfigurations.proxmox-agent0;
+          proxmoxServer1 = self.nixosConfigurations.proxmox-server1;
+          proxmoxServer2 = self.nixosConfigurations.proxmox-server2;
           installer = self.nixosConfigurations.installer-iso;
         in
         {
@@ -118,6 +127,8 @@
         // lib.optionalAttrs (system == "x86_64-linux") {
           proxmox-server0-qcow2 = proxmoxServer.config.system.build.image;
           proxmox-agent0-qcow2 = proxmoxAgent.config.system.build.image;
+          proxmox-server1-qcow2 = proxmoxServer1.config.system.build.image;
+          proxmox-server2-qcow2 = proxmoxServer2.config.system.build.image;
           installer-iso = installer.config.system.build.isoImage;
         }
       );

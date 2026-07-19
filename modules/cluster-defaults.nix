@@ -2,6 +2,9 @@
   config,
   lib,
   pkgs,
+  # From flake specialArgs: pkgs set for RKE2 from the nixpkgs-rke2 input (P4).
+  # Falls back to OS pkgs when the module is imported outside the flake (e.g. ad-hoc).
+  rke2Pkgs ? pkgs,
   ...
 }:
 let
@@ -11,9 +14,12 @@ in
   options.rke2nixos = {
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.rke2;
-      defaultText = lib.literalExpression "pkgs.rke2";
-      description = "RKE2 package (e.g. pkgs.rke2, pkgs.rke2_1_33, pkgs.rke2_latest).";
+      default = rke2Pkgs.rke2;
+      defaultText = lib.literalExpression "rke2Pkgs.rke2";
+      description = ''
+        RKE2 package. Default comes from the flake input nixpkgs-rke2 (pin independence).
+        Override with a versioned attr if needed (e.g. rke2Pkgs.rke2_1_33).
+      '';
     };
 
     cni = lib.mkOption {

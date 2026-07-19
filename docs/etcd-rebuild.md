@@ -3,8 +3,7 @@
 Once you run three servers, etcd quorum is real. Node replacement is not
 "reinstall and hope" — membership must be cleaned up from a surviving CP.
 
-Join URL in this flake stays sticky to `server0:9345` until a VIP/LB is introduced
-(README Phase 2).
+Join URL: prefer cluster VIP (`settings.clusterVip`, currently `192.168.1.29`) when keepalived is enabled; sticky `bootstrapHost` remains valid. Avoid `192.168.1.20` on this LAN (conflicts with another device).
 
 ## Grow to quorum
 
@@ -53,7 +52,8 @@ Practice once on a **non-bootstrap** CP (e.g. server2) while server0+server1 sta
      member remove <member-id>
    ```
 
-   (`etcdctl` is available from the etcd package or RKE2 bundled binaries depending on PATH.)
+   (`etcdctl` may live under an RKE2 containerd snapshot, e.g.
+   `find /var/lib/rancher/rke2 -name etcdctl -type f`, or install via `nix-shell -p etcd`.)
 
 3. Wipe or reprovision the machine (clear `/var/lib/rancher/rke2` on the replaced node only).
 

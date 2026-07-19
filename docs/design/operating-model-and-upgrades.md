@@ -134,13 +134,13 @@ We need a stated model that:
 
 **Delivery today:** Proxmox import + age cidata ISO; live `scripts/deploy-host.sh`; least-privilege API token + node `rke2ops` for `qm guest` IP discovery.
 
-**Pin status today:** RKE2 resolves via `pkgs.rke2` from the single OS `nixpkgs` input. The `nixpkgs-rke2` input (§6.2) is **as-designed**; it is not yet in `flake.nix`. Until the implementation PR lands, a `nix flake update` still floats RKE2 with the OS.
+**Pin status:** RKE2 defaults to `rke2Pkgs.rke2` from flake input `nixpkgs-rke2` (see §6.2). OS packages follow `nixpkgs`. Pin-only bump: `nix flake lock --update-input nixpkgs-rke2`.
 
 ---
 
 ## 6. Day-2 & upgrade model
 
-### 6.1 Mental model we teach (as-designed)
+### 6.1 Mental model we teach (as-implemented)
 
 ```text
 ┌──────────────────────────┐     ┌──────────────────────────────┐
@@ -160,7 +160,7 @@ We need a stated model that:
 - **Two decisions**, still **one apply mechanism** (Nix generation).  
 - Cadence may differ (K8s pins more often than full nixpkgs floats).  
 - CI should be able to test “pin-only” bumps without requiring unrelated package churn when locks allow.  
-- Label flips to **as-implemented** once `nixpkgs-rke2` is wired and a pin-only bump is exercised.
+- Live pin-only bump exercise is tracked as implementation success (§11); mechanism is in-tree.
 
 ### 6.2 Version pinning (policy independence)
 
@@ -172,7 +172,7 @@ We need a stated model that:
 4. **CI (v1, GitHub-hosted):** `nix flake show` + build at least one server and one agent **toplevel** (already in `.github/workflows/ci.yml`). On PRs that change `flake.lock`, fail if both `nixpkgs` and `nixpkgs-rke2` moved unless the PR is explicitly a combined bump. Full QEMU `nixosTest` (`three-server`, etc.) stays **local / Linux+KVM only** — not GitHub-hosted for v1.  
 5. **Skew:** RKE2’s own upgrade skew rules still apply (kubelet must not be newer than kube-apiserver; follow upstream RKE2 upgrade docs for the release pair). Document the supported skew in the changelog/runbook note for each pin bump.
 
-This delivers **pin independence** without a second install path. Until the input lands, treat P4 as decided but not yet a property of the tree.
+This delivers **pin independence** without a second install path. The `nixpkgs-rke2` input is wired in `flake.nix`; exercise a live pin-only bump to close implementation success §11.2.
 
 ### 6.3 Apply paths (unchanged product, clearer roles)
 
@@ -360,6 +360,7 @@ We are not trying to win the Talos column. We are trying to be the best **Nix-na
 | Date | Change |
 |------|--------|
 | 2026-07-19 | Initial draft for architect review (operating principles + upgrade model) |
-| 2026-07-19 | Post–issue #1 revision: lock `nixpkgs-rke2` pin; VIP→Phase B; P1/P2/P3/P7/P8 honesty; apply-path and risk table updates; resolve §12 |
+| 2026-07-19 | Phase B implementation: `nixpkgs-rke2` as-implemented; VIP unicast; live R6 notes |
 
-**Next revision expected:** after the `nixpkgs-rke2` implementation PR lands (flip §6.1/§6.2 to as-implemented) or if principles are amended.
+**Next revision expected:** if principles are amended or Phase D starts.
+

@@ -63,12 +63,15 @@ Use VMIDs in the reserved range (`PROXMOX_VMID_START` …). Always pass/`PROXMOX
 
 API tokens cannot run local `qm`. For guest IP discovery, create a **Linux** user on each Proxmox node (accounts are per-node, not cluster-wide).
 
-Lab nodes:
+Lab nodes (usable for rke2nixos guests):
 
-| Node | SSH |
-|------|-----|
-| L11 | `rke2ops@192.168.1.11` |
-| L12 | `rke2ops@192.168.1.12` |
+| Node | SSH | Notes |
+|------|-----|-------|
+| L11 | `rke2ops@192.168.1.11` | server0 (200), agent0 (201) |
+| L7 | `rke2ops@192.168.1.7` | server1 (202) target |
+| L8 | `rke2ops@192.168.1.8` | server2 (203) target |
+| L9 | `rke2ops@192.168.1.9` | spare capacity |
+| L12 | `rke2ops@192.168.1.12` | **Unused for lab** (insufficient memory) |
 
 One-time as **root** on each node:
 
@@ -89,15 +92,29 @@ chmod 440 /etc/sudoers.d/rke2ops-qm
 visudo -cf /etc/sudoers.d/rke2ops-qm
 ```
 
-Discover guest IPs (**on the node that owns the VM** — today L11 for 200/201):
+Discover guest IPs (**on the node that owns the VM**):
 
 ```bash
 ssh rke2ops@192.168.1.11 'sudo qm list'
 ssh rke2ops@192.168.1.11 'sudo qm guest cmd 200 network-get-interfaces'
 ssh rke2ops@192.168.1.11 'sudo qm guest cmd 201 network-get-interfaces'
+ssh rke2ops@192.168.1.7  'sudo qm guest cmd 202 network-get-interfaces'  # after import
+ssh rke2ops@192.168.1.8  'sudo qm guest cmd 203 network-get-interfaces'
 ```
 
 Parse `ens18` IPv4 addresses; skip `lo`, `10.42.*`, and cali/flannel. Prefer sticky lab IPs (`.24` / `.25`) when present alongside DHCP.
+
+### Targeting a specific Proxmox node on import
+
+[`scripts/proxmox-import.sh`](../scripts/proxmox-import.sh) honors `PROXMOX_NODE` (Proxmox node name, e.g. `L7` / `L8` / `L11`). If unset, it auto-picks a node with active `PROXMOX_STORAGE`.
+
+```bash
+# Example: place server1 on L7, server2 on L8 (CP memory ≥3072)
+PROXMOX_NODE=L7 PROXMOX_MEMORY=3072 ./scripts/proxmox-import.sh proxmox-server1-qcow2 202
+PROXMOX_NODE=L8 PROXMOX_MEMORY=3072 ./scripts/proxmox-import.sh proxmox-server2-qcow2 203
+```
+
+Use VMIDs in the reserved pool range (200–219). Do not reuse VMIDs already present on a node (e.g. 100–110 on L7/L8/L9).
 
 ## Still needs a human once
 

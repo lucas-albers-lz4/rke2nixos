@@ -13,10 +13,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: DeterminateSystems/nix-installer-action@v16
 
       - uses: DeterminateSystems/magic-nix-cache-action@v12
+
+      - name: Check flake.lock pin discipline
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.base_ref }}" --depth=1 || true
+            ./scripts/check-flake-lock-pins.sh "origin/${{ github.base_ref }}"
+          else
+            ./scripts/check-flake-lock-pins.sh origin/master
+          fi
 
       - name: Flake show
         run: nix flake show

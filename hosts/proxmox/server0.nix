@@ -2,6 +2,7 @@
 { config, pkgs, ... }:
 let
   settings = import ./settings.nix;
+  joinAddr = if settings.clusterVip != "" then settings.clusterVip else settings.bootstrapHost;
 in
 {
   imports = [
@@ -26,6 +27,18 @@ in
       tlsSans = [
         "server0"
         settings.bootstrapHost
+      ]
+      ++ (if settings.clusterVip != "" then [ settings.clusterVip ] else [ ]);
+    };
+
+    vip = {
+      enable = settings.clusterVip != "";
+      virtualIp = settings.clusterVip;
+      priority = 200; # prefer bootstrap as MASTER
+      unicastSrcIp = settings.server0Ip;
+      unicastPeers = [
+        settings.server1Ip
+        settings.server2Ip
       ];
     };
   };

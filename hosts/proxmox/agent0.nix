@@ -2,6 +2,7 @@
 { config, pkgs, ... }:
 let
   settings = import ./settings.nix;
+  joinHost = if settings.clusterVip != "" then settings.clusterVip else settings.bootstrapHost;
 in
 {
   imports = [
@@ -22,7 +23,7 @@ in
 
     agent = {
       enable = true;
-      joinUrl = "https://${settings.bootstrapHost}:9345";
+      joinUrl = "https://${joinHost}:9345";
       tokenFile = config.sops.secrets.rke2-token.path;
     };
   };

@@ -31,6 +31,7 @@ nix build .#packages.x86_64-linux.proxmox-agent0-qcow2 --out-link result-agent-q
 
 ```bash
 # API (laptop + token env). Defaults: memory=2048, cpu=host (required for x86-64-v2 / canal).
+# Pin the hypervisor with PROXMOX_NODE when spreading HA (see proxmox-rbac.md).
 ./scripts/proxmox-import.sh ./result-server-qcow/nixos.qcow2 200 local-lvm rke2nixos-200
 ./scripts/proxmox-import.sh ./result-agent-qcow/nixos.qcow2 201 local-lvm rke2nixos-201
 ```
@@ -38,9 +39,15 @@ nix build .#packages.x86_64-linux.proxmox-agent0-qcow2 --out-link result-agent-q
 Or pass a flake attr name and let the script build:
 
 ```bash
-./scripts/proxmox-import.sh proxmox-server0-qcow2 200
-./scripts/proxmox-import.sh proxmox-agent0-qcow2 201
+PROXMOX_NODE=L11 PROXMOX_MEMORY=3072 ./scripts/proxmox-import.sh proxmox-server0-qcow2 200
+PROXMOX_NODE=L11 ./scripts/proxmox-import.sh proxmox-agent0-qcow2 201
+
+# HA control-planes (R6): L7 / L8 — verify free RAM first (other guests may already use ~8–9 GiB)
+PROXMOX_NODE=L7 PROXMOX_MEMORY=3072 ./scripts/proxmox-import.sh proxmox-server1-qcow2 202
+PROXMOX_NODE=L8 PROXMOX_MEMORY=3072 ./scripts/proxmox-import.sh proxmox-server2-qcow2 203
 ```
+
+Lab hypervisors: **L11**, **L7**, **L8**, **L9** (`rke2ops@192.168.1.{11,7,8,9}`). **L12** is unused for this lab (insufficient memory).
 
 Do **not** use default `kvm64` CPU — glibc in RKE2 images needs x86-64-v2 (`cpu=host` is set by the import script).
 

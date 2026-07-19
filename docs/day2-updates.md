@@ -51,16 +51,16 @@ NixOS generation rollback restores OS + packaged RKE2 binaries/units/config. It 
 
 When preload is enabled, image tarballs must match the RKE2 binary from the same package. After an RKE2 pin-only bump, rebuild/redeploy so staged archives come from the new package — do not leave old tarballs paired with a new binary.
 
-## Pin bumps (once `nixpkgs-rke2` lands)
+## Pin bumps
 
-Until the dedicated input exists, RKE2 still floats with OS `nixpkgs`. After it lands:
+RKE2 is pinned by flake input `nixpkgs-rke2`:
 
 ```bash
 nix flake lock --update-input nixpkgs-rke2
 # build + rolling deploy per design §6.2 / §6.4
 ```
 
-Respect RKE2’s own upgrade skew rules (kubelet must not be newer than kube-apiserver).
+Do not float OS `nixpkgs` on a pin-only PR. Respect RKE2’s own upgrade skew rules (kubelet must not be newer than kube-apiserver).
 
 ## Optional later tools
 

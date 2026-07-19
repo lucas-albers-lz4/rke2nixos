@@ -20,6 +20,11 @@ fi
 
 echo "Deploying flake config '$CONFIG' → $TARGET"
 echo "RKE2 state under /var/lib/rancher/rke2 is left intact across generations."
+echo "Note: NixOS generation rollback does not rewind etcd / containerd / CNI state under /var/lib/rancher/rke2."
+
+# Flakes + nix-command are required for --flake / nix shell; many workstations omit them by default.
+export NIX_CONFIG="${NIX_CONFIG:+$NIX_CONFIG
+}experimental-features = nix-command flakes"
 
 rebuild=(nixos-rebuild)
 if ! command -v nixos-rebuild >/dev/null 2>&1; then

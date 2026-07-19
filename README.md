@@ -140,7 +140,7 @@ Not on the R1–R7 critical path:
 - **CI / containers:** [`scripts/nix-docker.sh`](scripts/nix-docker.sh); [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds toplevels + qcow2 + ISO.
 - **QEMU checks:** Linux + KVM only — not Docker / not GitHub-hosted CI for v1.
 - **CNI:** canal. Cilium is Phase 2.
-- **Upstream:** `nix flake update` bumps RKE2 via nixpkgs.
+- **Upstream / pins:** OS packages follow flake input `nixpkgs`. RKE2 follows **`nixpkgs-rke2`** — pin-only bump with `nix flake lock --update-input nixpkgs-rke2` (do not float OS `nixpkgs` on every K8s bump). Full OS bump: `nix flake lock --update-input nixpkgs`.
 
 ## License
 
