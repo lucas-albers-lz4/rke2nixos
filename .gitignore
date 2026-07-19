@@ -4,7 +4,10 @@ result-*
 .pre-commit-config.yaml
 *.qcow2
 *.img
+*.iso
 secrets/*.yaml
+secrets/age.key
+secrets/age-key.txt
 !secrets/.sops.yaml
 !secrets/rke2-token.enc.yaml
 .DS_Store

@@ -1,5 +1,4 @@
-# Shared minimal profile for example hosts (QEMU / docs).
-# Replace fileSystems / boot with real hardware when deploying.
+# Shared minimal profile for QEMU / local interactive VMs.
 { modulesPath, ... }:
 {
   imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];

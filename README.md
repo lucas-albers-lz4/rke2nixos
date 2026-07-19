@@ -10,12 +10,26 @@ nixpkgs already packages RKE2 and ships a full NixOS module (role, token, CNI, C
 - Firewall, sysctl, hostname/`node-name` conventions
 - Example hosts for **1 server + 1 agent → 3-server quorum**
 - QEMU NixOS tests with preloaded image archives
+- sops-nix cluster token, Proxmox qcow2 / installer ISO, day-2 `nixos-rebuild` deploy
 
 It does **not** reimplement the RKE2 systemd unit.
 
+## Deploy runway (R0–R7)
+
+| Phase | What |
+|-------|------|
+| R0 | Flake, QEMU checks, Docker/CI toplevels |
+| R1 | sops-nix token ([`scripts/sops-bootstrap.sh`](scripts/sops-bootstrap.sh)) |
+| R2 | Interactive VM smoke ([docs/interactive-vms.md](docs/interactive-vms.md)) |
+| R3 | Baked qcow2 + ISO packages |
+| R4 | Host profiles: qemu / proxmox / bare-metal |
+| R5 | Live bring-up runbooks ([docs/deploy-proxmox.md](docs/deploy-proxmox.md), [docs/deploy-bare-metal.md](docs/deploy-bare-metal.md)) |
+| R6 | HA + etcd replace drill ([docs/etcd-rebuild.md](docs/etcd-rebuild.md)) |
+| R7 | Day-2 updates ([docs/day2-updates.md](docs/day2-updates.md), [`scripts/deploy-host.sh`](scripts/deploy-host.sh)) |
+
 ## Quick start
 
-Flakes need `nix-command` and `flakes` enabled (via nix.conf, or `--extra-experimental-features 'nix-command flakes'`). Prefer Nix-in-Docker for day-to-day work.
+Flakes need `nix-command` and `flakes` enabled. Prefer Nix-in-Docker for day-to-day work.
 
 ### Nix in Docker (preferred)
 
@@ -28,15 +42,17 @@ Flakes need `nix-command` and `flakes` enabled (via nix.conf, or `--extra-experi
 ### Host Nix
 
 ```bash
-# flake.lock is already present after the first nix flake update
-nix flake update
 nix flake show
 
-# Same shippable closures CI builds
+# Lab toplevels (CI)
 nix build .#packages.x86_64-linux.example-server0
 nix build .#packages.x86_64-linux.example-agent0
 
-# QEMU checks: Linux host + KVM only (not Docker / not GitHub-hosted CI)
+# Baked images
+nix build .#packages.x86_64-linux.proxmox-server0-qcow2
+nix build .#packages.x86_64-linux.installer-iso
+
+# QEMU checks: Linux host + KVM only
 nix build .#checks.x86_64-linux.server-agent
 nix build .#checks.x86_64-linux.single-node
 nix build .#checks.x86_64-linux.three-server
@@ -45,31 +61,28 @@ nix build .#checks.x86_64-linux.three-server
 ### Interactive VMs
 
 ```bash
+./scripts/smoke-vms.sh
 nix run .#example-server0-vm
-# elsewhere / second terminal after networking is set up:
-nix run .#example-agent0-vm
 ```
 
-Join URL for agents and additional servers is sticky to the bootstrap node: `https://<server0-ip>:9345`.
+See [docs/interactive-vms.md](docs/interactive-vms.md) for multi-VM networking gaps.
 
 ## Layout
 
 ```
 flake.nix
-scripts/nix-docker.sh  # Nix-in-Docker wrapper
-.github/workflows/ci.yml
-modules/
-  common.nix           # firewall, sysctl, state dirs
-  cluster-defaults.nix # package, CNI (canal), optional image preload
-  rke2-server.nix      # bootstrap / joining control-plane
-  rke2-agent.nix       # workers
+.sops.yaml
+scripts/                 # nix-docker, sops-bootstrap, deploy-host, proxmox-*, smoke-vms
+docs/proxmox-rbac.md     # least-privilege Proxmox role + API token
+modules/                 # rke2nixos.* wrappers
 hosts/
-  example-server0.nix  # bootstrap CP
-  example-agent0.nix   # first agent
-  example-server1.nix  # joining CP (HA)
-  example-server2.nix  # joining CP (quorum)
-tests/                 # nixosTest QEMU suites
-secrets/               # sops-nix token scaffold
+  profiles/              # qemu, proxmox, bare-metal, iso
+  example-*.nix          # QEMU/CI lab (lab token)
+  proxmox/               # sops-backed Proxmox hosts
+  bare-metal/            # sops-backed metal hosts
+tests/                   # nixosTest QEMU suites (test token)
+secrets/                 # age.key (gitignored), rke2-token.enc.yaml
+docs/                    # deploy, day-2, etcd, interactive VMs
 ```
 
 ## Bootstrap semantics
@@ -82,36 +95,26 @@ secrets/               # sops-nix token scaffold
 
 **Token:** generate once, store via sops-nix, reuse forever. Regenerating breaks joins and rebuilds.
 
-**State:** declarative config under `/etc/rancher/rke2` (and Nix); mutable data under `/var/lib/rancher/rke2` (persist across generations; optional dedicated disk).
+**State:** declarative config under `/etc/rancher/rke2` (and Nix); mutable data under `/var/lib/rancher/rke2`.
 
-## Secrets (sops-nix)
+## Secrets (sops-nix) — R1
 
-1. Install age and put your public key in [`secrets/.sops.yaml`](secrets/.sops.yaml)
-2. Encrypt [`secrets/rke2-token.enc.yaml`](secrets/rke2-token.enc.yaml)
-3. In a host module:
-
-```nix
-sops.defaultSopsFile = ../secrets/rke2-token.enc.yaml;
-sops.secrets.rke2-token = { };
-rke2nixos.server.tokenFile = config.sops.secrets.rke2-token.path;
+```bash
+./scripts/sops-bootstrap.sh          # age key + encrypt secrets/rke2-token.enc.yaml
+./scripts/sops-bootstrap.sh --rotate-token  # only before first real bootstrap
 ```
 
-Example hosts currently seed a lab token via activation script for QEMU convenience — replace with sops for real nodes.
+- Public key in [`.sops.yaml`](.sops.yaml) / [`secrets/.sops.yaml`](secrets/.sops.yaml)
+- Private key: `secrets/age.key` (gitignored) → on nodes as `/var/lib/sops-nix/key.txt`
+- Deploy hosts import [`hosts/sops-token.nix`](hosts/sops-token.nix)
+- QEMU example hosts keep [`hosts/lab-token.nix`](hosts/lab-token.nix); tests use [`tests/lib.nix`](tests/lib.nix)
 
 ## Growing to 3-server quorum
 
-1. Bring up `example-server0`, then `example-agent0` (or skip agent).
-2. Join `example-server1` and `example-server2` with the same token and `joinUrl = "https://server0:9345"`.
+1. Bring up bootstrap server0, then agent0.
+2. Join server1 and server2 with the same token and `joinUrl`.
 3. Confirm three Ready control-plane nodes / etcd members.
-
-### Control-plane rebuild rules
-
-- Remove the etcd member **and** `kubectl delete node` from a **surviving** CP before reinstalling a CP node.
-- Rejoin with the **same** cluster token.
-- Do not rebuild the last remaining server without an etcd backup/restore plan.
-- Join URL stays on `server0` until you introduce a VIP/LB (not in v1).
-
-See also [docs/etcd-rebuild.md](docs/etcd-rebuild.md).
+4. Practice the replace drill in [docs/etcd-rebuild.md](docs/etcd-rebuild.md).
 
 ## Firewall
 
@@ -123,22 +126,21 @@ Ports opened by `modules/common.nix` (firewall stays enabled):
 
 ## Phase 2 (deferred)
 
-Not implemented yet — intentional backlog:
+Not on the R1–R7 critical path:
 
-- Cilium + `disable-kube-proxy` + HelmChartConfig (see production ansible patterns separately)
+- Cilium + `disable-kube-proxy` + HelmChartConfig
 - Full airgap module polish beyond `preloadImages`
 - Raspberry Pi 4 host profile (`nixos-hardware`)
 - `registries.yaml` helper + restart semantics
-- Deploy tool choice (nixos-rebuild / deploy-rs / colmena)
+- deploy-rs / colmena (optional; `nixos-rebuild` covers R7)
+- VIP/LB for join URL
 
 ## Platform notes
 
-- **CI / containers:** use [`scripts/nix-docker.sh`](scripts/nix-docker.sh) locally; [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds `packages.*.example-server0` / `example-agent0` and uploads artifacts. See [TODO.md](TODO.md) for remaining work.
-- **Eval/build vs QEMU:** Docker and GitHub-hosted CI are for flake eval and toplevel packages. RKE2 QEMU checks stay on a Linux host with KVM — not inside Docker for v1.
-- **Linux KVM (QEMU checks):** builders need `/dev/kvm` (put `nixbld*` in the `kvm` group; set `extra-sandbox-paths = /dev/kvm` in nix.conf). Without KVM, QEMU falls back to TCG and RKE2 tests are impractical.
-- **macOS:** flake evaluation works once Nix is installed (or via Docker); `nixosTest` / `build.vm` need a Linux builder with KVM.
-- **CNI:** v1 defaults to **canal**. Cilium is phase 2.
-- **Upstream:** bump RKE2 with `nix flake update` (nixpkgs update scripts handle package bumps).
+- **CI / containers:** [`scripts/nix-docker.sh`](scripts/nix-docker.sh); [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds toplevels + qcow2 + ISO.
+- **QEMU checks:** Linux + KVM only — not Docker / not GitHub-hosted CI for v1.
+- **CNI:** canal. Cilium is Phase 2.
+- **Upstream:** `nix flake update` bumps RKE2 via nixpkgs.
 
 ## License
 

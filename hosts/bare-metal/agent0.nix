@@ -1,9 +1,9 @@
-# First agent (worker). Joins bootstrap server on :9345.
-{ ... }:
+# Bare-metal agent. Point joinUrl at the bootstrap node IP.
+{ config, ... }:
 {
   imports = [
-    ./profiles/qemu.nix
-    ./lab-token.nix
+    ../profiles/bare-metal.nix
+    ../sops-token.nix
   ];
 
   networking.hostName = "agent0";
@@ -15,7 +15,7 @@
     agent = {
       enable = true;
       joinUrl = "https://server0:9345";
-      tokenFile = "/etc/rancher/rke2/token";
+      tokenFile = config.sops.secrets.rke2-token.path;
     };
   };
 }

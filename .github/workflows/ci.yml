@@ -40,3 +40,34 @@ jobs:
           name: example-agent0-toplevel
           path: result-agent
           if-no-files-found: error
+
+      - name: Build proxmox-server0 qcow2
+        run: nix build .#packages.x86_64-linux.proxmox-server0-qcow2 --out-link result-server-qcow --print-build-logs
+
+      - name: Compress proxmox-server0 qcow2
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq zstd
+          mkdir -p artifact-qcow
+          zstd -T0 -19 -o artifact-qcow/proxmox-server0.qcow2.zst result-server-qcow/*.qcow2
+
+      - name: Upload proxmox-server0-qcow2
+        uses: actions/upload-artifact@v4
+        with:
+          name: proxmox-server0-qcow2-zst
+          path: artifact-qcow
+          if-no-files-found: error
+
+      - name: Build installer ISO
+        run: nix build .#packages.x86_64-linux.installer-iso --out-link result-iso --print-build-logs
+
+      - name: Compress installer ISO
+        run: |
+          mkdir -p artifact-iso
+          zstd -T0 -19 -o artifact-iso/installer.iso.zst result-iso/iso/*.iso
+
+      - name: Upload installer-iso
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-iso-zst
+          path: artifact-iso
+          if-no-files-found: error
