@@ -10,7 +10,7 @@
 | R3 baked images | Done — `proxmox-*-qcow2`, `installer-iso` packages + CI |
 | R4 host profiles | Done — `hosts/profiles/{qemu,proxmox,bare-metal,iso}.nix` |
 | R5 live deploy runbooks | Done — [docs/deploy-proxmox.md](docs/deploy-proxmox.md), [docs/deploy-bare-metal.md](docs/deploy-bare-metal.md), `scripts/proxmox-import.sh` |
-| R6 HA + etcd drill | Scaffolding done — [docs/etcd-rebuild.md](docs/etcd-rebuild.md), `three-server` check, proxmox server1/2 configs; **live join/drill still open** |
+| R6 HA + etcd drill | **Done** (live) — [docs/etcd-rebuild.md](docs/etcd-rebuild.md), 3 CP + etcd replace drill 2026-07-19 |
 | R7 day-2 updates | Done — `scripts/deploy-host.sh`, [docs/day2-updates.md](docs/day2-updates.md); **live** no-wipe deploy exercised on Proxmox 1+1 |
 
 ## Operator checklist (on your Proxmox / metal)
@@ -34,10 +34,9 @@ Canonical draft (revised after [issue #1](https://github.com/lucas-albers-lz4/rk
 
 **Phase B status (2026-07-19):** `nixpkgs-rke2` landed; CI lockfile guard; `rolling-upgrade.sh`; live pin deploy; VIP `192.168.1.29`; live R6 + etcd drill Done.
 
-## Paused — resume here (live R6)
+## Lab status (stop here 2026-07-19)
 
-
-~~Paused for unrelated planning/design work.~~ **Live R6 + etcd drill completed 2026-07-19.**
+Live R6 + addressing campaigns 1–3 complete. Next session: optional Campaign 4, or Phase D / CLI polish.
 
 ### Current lab snapshot
 

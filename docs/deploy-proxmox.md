@@ -18,7 +18,9 @@ Then on your workstation, source the generated env file and use API import (see 
 Edit [`hosts/proxmox/settings.nix`](../hosts/proxmox/settings.nix) **before** baking:
 
 - `adminSshKeys` — root SSH public keys
-- `bootstrapHost` — sticky join target (prefer server0's reserved IP, e.g. `192.168.1.24`)
+- `bootstrapHost` — break-glass join target (server0 static IP, currently `192.168.1.32`)
+- `clusterVip` — preferred join/API VIP (currently `192.168.1.29`)
+- `server0Ip` / `server1Ip` / `server2Ip` / `agent0Ip` — static ens18 addresses (Campaigns 1–3)
 
 When `bootstrapHost` is an IPv4, joining hosts (`agent0`, `server1`, `server2`) get `networking.extraHosts` mapping that IP → `server0`.
 
@@ -60,9 +62,9 @@ sops-nix expects `/var/lib/sops-nix/key.txt` (contents of `secrets/age.key`). **
 Proxmox 8.x storage upload accepts `iso` (not `snippets`) for least-privilege tokens, so the helper builds a small **nocloud CIDATA** ISO (age `write_files` only) and attaches it as `ide3`. Sticky IPs use Proxmox's own cloud-init drive (`ide2` + `ipconfig0`):
 
 ```bash
-# Sticky IPs: prefer DHCP reservations matching settings.bootstrapHost.
-# Proxmox ipconfig0 is set when these are exported (ide2 cloudinit drive):
-export PROXMOX_IPCONFIG_200='ip=192.168.1.24/24,gw=192.168.1.1'
+# Optional first-boot ipconfig0 (ide2). Lab day-2 uses Nix static-address.nix instead;
+# keep these aligned with settings.nix if you still set Proxmox cloud-init net:
+export PROXMOX_IPCONFIG_200='ip=192.168.1.32/24,gw=192.168.1.1'
 export PROXMOX_IPCONFIG_201='ip=192.168.1.25/24,gw=192.168.1.1'
 # Control-plane: override import default if needed
 # PROXMOX_MEMORY=3072 ./scripts/proxmox-import.sh …
