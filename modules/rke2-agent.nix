@@ -5,16 +5,30 @@
 }:
 let
   cfg = config.rke2nixos.agent;
+  isCloudInit = cfg.identityMode == "cloud-init";
 in
 {
   options.rke2nixos.agent = {
     enable = lib.mkEnableOption "RKE2 agent (worker) role";
 
+    identityMode = lib.mkOption {
+      type = lib.types.enum [
+        "static"
+        "cloud-init"
+      ];
+      default = "static";
+      description = ''
+        static: bake joinUrl / nodeIP / hostname at eval time (named hosts).
+        cloud-init: rke2nixos-agent-identity.service writes a config drop-in
+        from cidata before rke2-agent.service (golden agent image).
+      '';
+    };
+
     joinUrl = lib.mkOption {
       type = lib.types.str;
       default = "";
       example = "https://192.168.1.10:9345";
-      description = "Supervisor URL of a control-plane server (port 9345).";
+      description = "Supervisor URL of a control-plane server (port 9345). Required when identityMode = static.";
     };
 
     tokenFile = lib.mkOption {
@@ -50,7 +64,13 @@ in
     nodeIP = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      description = "Address to advertise for this node.";
+      description = "Address to advertise for this node. Ignored when identityMode = cloud-init.";
+    };
+
+    identityInterface = lib.mkOption {
+      type = lib.types.str;
+      default = "ens18";
+      description = "Interface used to resolve node-ip when identityMode = cloud-init.";
     };
 
     extraFlags = lib.mkOption {
@@ -63,8 +83,8 @@ in
   config = lib.mkIf cfg.enable {
     assertions = [
       {
-        assertion = cfg.joinUrl != "";
-        message = "rke2nixos.agent: joinUrl is required";
+        assertion = isCloudInit || cfg.joinUrl != "";
+        message = "rke2nixos.agent: joinUrl is required when identityMode = static";
       }
       {
         assertion = cfg.tokenFile != null || cfg.token != "";
@@ -75,13 +95,16 @@ in
     services.rke2 = {
       enable = true;
       role = "agent";
-      serverAddr = cfg.joinUrl;
       tokenFile = cfg.tokenFile;
       token = cfg.token;
-      nodeName = if cfg.nodeName != null then cfg.nodeName else config.networking.hostName;
       nodeLabel = cfg.nodeLabel;
-      nodeIP = cfg.nodeIP;
       extraFlags = lib.flatten [ cfg.extraFlags ];
+      # cloud-init mode: identity oneshot supplies server / node-name / node-ip via drop-in.
+      serverAddr = lib.mkIf (!isCloudInit) cfg.joinUrl;
+      nodeName = lib.mkIf (!isCloudInit) (
+        if cfg.nodeName != null then cfg.nodeName else config.networking.hostName
+      );
+      nodeIP = lib.mkIf (!isCloudInit) cfg.nodeIP;
     };
   };
 }

@@ -10,4 +10,5 @@ secrets/age.key
 secrets/age-key.txt
 !secrets/.sops.yaml
 !secrets/rke2-token.enc.yaml
+!secrets/rke2-agent-token.enc.yaml
 .DS_Store

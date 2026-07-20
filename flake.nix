@@ -44,6 +44,7 @@
             ./modules/cluster-defaults.nix
             ./modules/rke2-server.nix
             ./modules/rke2-agent.nix
+            ./modules/rke2-agent-identity.nix
             ./modules/rke2-vip.nix
           ];
         };
@@ -93,6 +94,9 @@
         bare-metal-server0 = mkNixos "x86_64-linux" [ ./hosts/bare-metal/server0.nix ];
         bare-metal-agent0 = mkNixos "x86_64-linux" [ ./hosts/bare-metal/agent0.nix ];
 
+        # Golden agent template (agent-token + cloud-init identity; not in topology.nodes)
+        proxmox-golden-agent = mkNixos "x86_64-linux" [ ./hosts/proxmox/golden-agent.nix ];
+
         # Installer ISO (nixos-install onto bare metal)
         installer-iso = mkNixos "x86_64-linux" [ ./hosts/profiles/iso.nix ];
       }
@@ -137,6 +141,8 @@
         // lib.optionalAttrs (system == "x86_64-linux") (
           proxmoxQcow2
           // {
+            proxmox-golden-agent-qcow2 =
+              self.nixosConfigurations.proxmox-golden-agent.config.system.build.image;
             installer-iso = installer.config.system.build.isoImage;
           }
         )

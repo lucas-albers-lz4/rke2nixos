@@ -60,6 +60,8 @@ Kubernetes version may be an **independent decision** (dedicated `nixpkgs-rke2` 
 - **Welcome:** Shared modules + parameterized host lists to reduce boilerplate.  
 - **Deferred:** ASG-style “spawn N identical workers from a machine config API” (Talos-like). That is a different product class.
 
+**P5a — Golden agent image (hypervisor workers).** After the agent closure is stable, operators may ship one Nix-built golden agent image whose per-node identity (hostname, IP, join URL) is supplied at first boot (cloud-init/cidata). The closure remains Nix-evaluated (P1). Day-2 upgrades and rolling drains require the node to appear in the flake topology/inventory. Control planes stay fully named configs. This does **not** endorse containerized RKE2 agents or cloud autoscaler APIs (still P9). See [golden-agent.md](../golden-agent.md).
+
 ### P6 — Prefer boring Kubernetes operations on top of Nix
 
 Drain/cordon, etcd member replace, sticky registration address / VIP, and upgrade *ordering* are ordinary cluster ops. Nix does not replace them. Where industry tools help **ordering** (e.g. plans that drain nodes), they may orchestrate **which node applies the next generation**—they must not become a source of truth for node contents.
@@ -72,14 +74,14 @@ Secrets **wiring** (sops-nix paths, tokenFile, unit dependencies) is declarative
 
 Live confidence order matters more than feature breadth: 1+1 Ready → day-2 no-wipe → 3 CP + etcd drill → then Phase 2 (Cilium, Pi, etc.). Scaffolding without live proof stays labeled scaffolding.
 
-**Status note:** Proxmox 1+1 Ready and day-2 no-wipe are live. Live R6 (3 CP + etcd drill) is **paused** — host configs and QEMU checks exist as scaffolding only (see [TODO.md](../TODO.md)).
+**Status note:** Proxmox 1+1 Ready, day-2 no-wipe, and live R6 (3 CP + etcd drill) are done (see [TODO.md](../TODO.md)).
 
 ### P9 — Explicit non-goals (for this phase of the project)
 
 - Matching Talos’s “no SSH, API-only” posture as a requirement (we use SSH for day-2 and break-glass).  
 - Decoupling RKE2 upgrades from Nix activation while keeping Nix as SoT.  
 - Competing with managed Rancher UX for channel subscriptions.  
-- Dynamic node pools / cluster autoscaler–driven machine creation.
+- Dynamic node pools / cluster autoscaler–driven machine creation (cloud ASG / machine-API). Proxmox template clones registered into topology are covered by P5a, not this non-goal.
 
 ---
 
@@ -362,6 +364,7 @@ We are not trying to win the Talos column. We are trying to be the best **Nix-na
 | 2026-07-19 | Initial draft for architect review (operating principles + upgrade model) |
 | 2026-07-19 | Phase B implementation: `nixpkgs-rke2` as-implemented; VIP unicast; live R6 notes |
 | 2026-07-20 | Proxmox `topology.nix` generator as-implemented (issue #3); settings/per-host files removed |
+| 2026-07-20 | P5a golden agent image as-implemented (issue #4); `proxmox-golden-agent-qcow2` |
 
-**Next revision expected:** if principles are amended (e.g. P5a) or Phase D / Tier 2 starts.
+**Next revision expected:** if principles are amended further or Phase D starts.
 
