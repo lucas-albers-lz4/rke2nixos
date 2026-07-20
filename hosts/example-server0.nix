@@ -1,5 +1,5 @@
 # Bootstrap control-plane (cluster-init). Join endpoint for others: this host :9345.
-# QEMU / CI path: lab token. Deploy path: hosts/proxmox/server0.nix or hosts/bare-metal/.
+# QEMU / CI path: lab token. Deploy path: hosts/proxmox/topology.nix or hosts/bare-metal/.
 { ... }:
 {
   imports = [

@@ -14,7 +14,7 @@ export SOPS_AGE_KEY_FILE="$PWD/secrets/age.key"
 ./scripts/deploy-host.sh proxmox-agent0 root@192.168.1.25
 ```
 
-Targets match [`hosts/proxmox/inventory.nix`](../hosts/proxmox/inventory.nix) (static CP/agent addresses).
+Targets match [`hosts/proxmox/inventory.nix`](../hosts/proxmox/inventory.nix) (derived from [`topology.nix`](../hosts/proxmox/topology.nix)).
 
 `deploy-host.sh` uses `nixos-rebuild` when available, otherwise `nix shell nixpkgs#nixos-rebuild -c nixos-rebuild` (common when only the nix CLI is installed).
 

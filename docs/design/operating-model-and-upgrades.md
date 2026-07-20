@@ -130,7 +130,7 @@ We need a stated model that:
         └─────────────────────────────────────────────┘
 ```
 
-**Join model today:** sticky `bootstrapHost` (often an IP) in `hosts/proxmox/settings.nix`; agents/joining servers use `joinUrl` + shared token; `networking.extraHosts` maps IP→`server0` when needed. VIP/LB is promoted to Phase B (not yet implemented)—see §7 and §8.
+**Join model today:** sticky `bootstrapHost` (derived from the bootstrap node IP in [`hosts/proxmox/topology.nix`](../../hosts/proxmox/topology.nix)); agents/joining servers use `joinUrl` + shared token; `networking.extraHosts` maps IP→bootstrap hostname when needed. VIP is flake-declared (`clusterVip` + keepalived) — see §7 and §8.
 
 **Delivery today:** Proxmox import + age cidata ISO; live `scripts/deploy-host.sh`; least-privilege API token + node `rke2ops` for `qm guest` IP discovery.
 
@@ -228,7 +228,7 @@ Reviewers can use this table to check consistency of future proposals. **Severit
 | Live HA + etcd drill | High | Execute live R6 when runway resumes ([etcd-rebuild.md](../etcd-rebuild.md)); scaffolding already present (P8) | Hope single CP + backups suffice undocumented |
 | Age / first-boot secrets | High | Keep cidata/cloud-init delivery; never bake age key into images (P7) | Commit keys; empty placeholder files |
 | CP memory floor (≥3 GiB recommended) | Medium | Import defaults + docs; guests under 2 GiB tend to leave control-plane NotReady — document loudly; optional Nix assertion later | Silent OOM loops |
-| Node boilerplate / scale-out | Medium | Shared modules now; optional `nodes.nix` generator in Phase B; mandatory generation only Phase D (P5) | Copy-paste hosts with unchecked drift |
+| Node boilerplate / scale-out | Medium | Shared modules + Proxmox `topology.nix` generator (as-implemented); mandatory richer generation Phase D (P5) | Copy-paste hosts with unchecked drift |
 | Build times | Medium | Binary caches, pin-only bumps, baked images for cold start | Disable purity / impure host installs |
 | `preloadImages` + pin bump | Medium | Live Proxmox hosts use `preloadImages = false`. When preload is on (tests/airgap), images must come from the **same** `rke2nixos.package` as the binary — see [day2-updates.md](../day2-updates.md) | Staging old image tarballs under a new RKE2 binary |
 | Cilium / advanced CNI | Lower (Phase D) | Package/module + rebuild/reboot as needed (P2) | Drop binaries into `/opt` outside Nix |
@@ -267,7 +267,7 @@ Phases are ordered by dependency and P8 (prove runway). This is an initiative li
 3. Inventory-aware `rolling-upgrade.sh` (cordon/drain/deploy/wait/uncordon) wrapping `deploy-host.sh`.  
 4. Optional `upgrade-rke2` thin CLI (must pass P3 guardrail).  
 5. **VIP/LB bridge** for join URL (flake-declared keepalived/VRRP or equivalent) — ahead of Cilium.  
-6. Optional `nodes.nix` → generated configs (checked in); hand-written hosts remain valid through Phase C.  
+6. Proxmox `topology.nix` → generated configs (as-implemented); hand-written bare-metal / example hosts remain valid through Phase C.  
 7. Harden age cidata / first-boot activate (already partially done); harden `deploy-host.sh` host-key verification as needed.
 
 ### Phase C — Live HA (checklist item 3)
@@ -284,7 +284,7 @@ Phases are ordered by dependency and P8 (prove runway). This is an initiative li
 
 - Cilium + kernel requirements.  
 - aarch64/Pi hardware profiles (same `nixpkgs-rke2` commit for both arches unless forced otherwise).  
-- Mandatory richer host generation from a node list (optional generator may already exist from Phase B).
+- Mandatory richer host generation beyond Proxmox topology (optional Proxmox generator already exists).
 
 Each phase should cite principles it relies on; proposals that need new principles update **§3** first.
 
@@ -350,7 +350,7 @@ We are not trying to win the Talos column. We are trying to be the best **Nix-na
 | 2 | **Rolling automation** | Scripted inventory for v1 (`rolling-upgrade.sh` wrapping `deploy-host.sh`). No SUC-style plan controller yet. |
 | 3 | **Single-CP labs** | Allowed with documented risk and explicit non-production stance. |
 | 4 | **VIP timing** | Promote VIP/LB to Phase B (after pin + rolling helper, before/with durable HA join). Cilium stays Phase D. Until VIP: bootstrap-failure runbook + no production claim on sticky-host join. |
-| 5 | **Host generation** | Hand-written hosts through Phase C. Optional `nodes.nix` generator in Phase B; mandatory adoption in Phase D. |
+| 5 | **Host generation** | Hand-written hosts through Phase C for non-Proxmox. Proxmox `topology.nix` generator as-implemented; mandatory richer adoption in Phase D. |
 | 6 | **SSH posture** | Break-glass SSH remains first-class (P9), including for `deploy-host.sh`. Host-key hardening is follow-on script work, not a design blocker. |
 
 ---
@@ -361,6 +361,7 @@ We are not trying to win the Talos column. We are trying to be the best **Nix-na
 |------|--------|
 | 2026-07-19 | Initial draft for architect review (operating principles + upgrade model) |
 | 2026-07-19 | Phase B implementation: `nixpkgs-rke2` as-implemented; VIP unicast; live R6 notes |
+| 2026-07-20 | Proxmox `topology.nix` generator as-implemented (issue #3); settings/per-host files removed |
 
-**Next revision expected:** if principles are amended or Phase D starts.
+**Next revision expected:** if principles are amended (e.g. P5a) or Phase D / Tier 2 starts.
 

@@ -63,6 +63,18 @@
           ]
           ++ modules;
         };
+
+      # Proxmox lab: one topology file → nixosConfigurations + qcow2 packages.
+      proxmoxTopology = import ./hosts/proxmox/topology.nix;
+      proxmoxMkHost = import ./hosts/proxmox/mk-host.nix;
+      proxmoxConfigurations = lib.listToAttrs (
+        map (
+          node:
+          lib.nameValuePair "proxmox-${node.name}" (
+            mkNixos "x86_64-linux" [ (proxmoxMkHost proxmoxTopology node) ]
+          )
+        ) proxmoxTopology.nodes
+      );
     in
     {
       inherit nixosModules;
@@ -77,19 +89,14 @@
         example-server0-aarch64 = mkNixos "aarch64-linux" [ ./hosts/example-server0.nix ];
         example-agent0-aarch64 = mkNixos "aarch64-linux" [ ./hosts/example-agent0.nix ];
 
-        # Proxmox baked images (sops token)
-        proxmox-server0 = mkNixos "x86_64-linux" [ ./hosts/proxmox/server0.nix ];
-        proxmox-agent0 = mkNixos "x86_64-linux" [ ./hosts/proxmox/agent0.nix ];
-        proxmox-server1 = mkNixos "x86_64-linux" [ ./hosts/proxmox/server1.nix ];
-        proxmox-server2 = mkNixos "x86_64-linux" [ ./hosts/proxmox/server2.nix ];
-
         # Bare-metal deploy hosts (sops token)
         bare-metal-server0 = mkNixos "x86_64-linux" [ ./hosts/bare-metal/server0.nix ];
         bare-metal-agent0 = mkNixos "x86_64-linux" [ ./hosts/bare-metal/agent0.nix ];
 
         # Installer ISO (nixos-install onto bare metal)
         installer-iso = mkNixos "x86_64-linux" [ ./hosts/profiles/iso.nix ];
-      };
+      }
+      // proxmoxConfigurations;
 
       checks = forAllSystems (
         system:
@@ -111,12 +118,15 @@
           pkgs = mkPkgs system;
           serverName = if system == "aarch64-linux" then "example-server0-aarch64" else "example-server0";
           agentName = if system == "aarch64-linux" then "example-agent0-aarch64" else "example-agent0";
-          # Disk / ISO images are x86_64-focused for Proxmox CI artifacts.
-          proxmoxServer = self.nixosConfigurations.proxmox-server0;
-          proxmoxAgent = self.nixosConfigurations.proxmox-agent0;
-          proxmoxServer1 = self.nixosConfigurations.proxmox-server1;
-          proxmoxServer2 = self.nixosConfigurations.proxmox-server2;
           installer = self.nixosConfigurations.installer-iso;
+          proxmoxQcow2 = lib.listToAttrs (
+            map (
+              node:
+              lib.nameValuePair "proxmox-${node.name}-qcow2" (
+                self.nixosConfigurations."proxmox-${node.name}".config.system.build.image
+              )
+            ) proxmoxTopology.nodes
+          );
         in
         {
           example-server0 = self.nixosConfigurations.${serverName}.config.system.build.toplevel;
@@ -124,13 +134,12 @@
           example-server0-vm = self.nixosConfigurations.${serverName}.config.system.build.vm;
           example-agent0-vm = self.nixosConfigurations.${agentName}.config.system.build.vm;
         }
-        // lib.optionalAttrs (system == "x86_64-linux") {
-          proxmox-server0-qcow2 = proxmoxServer.config.system.build.image;
-          proxmox-agent0-qcow2 = proxmoxAgent.config.system.build.image;
-          proxmox-server1-qcow2 = proxmoxServer1.config.system.build.image;
-          proxmox-server2-qcow2 = proxmoxServer2.config.system.build.image;
-          installer-iso = installer.config.system.build.isoImage;
-        }
+        // lib.optionalAttrs (system == "x86_64-linux") (
+          proxmoxQcow2
+          // {
+            installer-iso = installer.config.system.build.isoImage;
+          }
+        )
       );
 
       # Day-2: nixos-rebuild wrappers live in scripts/; apps expose common entry points.

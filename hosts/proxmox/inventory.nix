@@ -1,32 +1,22 @@
-# Proxmox lab inventory for rolling upgrades / deploy helpers.
-# Checked into git next to hosts (P3: no sibling YAML SoT). Edit when VMs/IPs change.
-{
-  controlPlanes = [
-    {
-      config = "proxmox-server0";
-      target = "root@192.168.1.32";
-      nodeName = "server0";
-      bootstrap = true;
-    }
-    {
-      config = "proxmox-server1";
-      target = "root@192.168.1.36";
-      nodeName = "server1";
-      bootstrap = false;
-    }
-    {
-      config = "proxmox-server2";
-      target = "root@192.168.1.35";
-      nodeName = "server2";
-      bootstrap = false;
-    }
-  ];
+# Derived rolling-upgrade inventory from topology.nix — do not edit IPs here.
+# Canonical edits: hosts/proxmox/topology.nix
+let
+  topology = import ./topology.nix;
 
-  agents = [
-    {
-      config = "proxmox-agent0";
-      target = "root@192.168.1.25";
-      nodeName = "agent0";
-    }
-  ];
+  mkCp = n: {
+    config = "proxmox-${n.name}";
+    target = "root@${n.ip}";
+    nodeName = n.name;
+    bootstrap = n.bootstrap or false;
+  };
+
+  mkAgent = n: {
+    config = "proxmox-${n.name}";
+    target = "root@${n.ip}";
+    nodeName = n.name;
+  };
+in
+{
+  controlPlanes = map mkCp topology.servers;
+  agents = map mkAgent (builtins.filter (n: n.role == "agent") topology.nodes);
 }

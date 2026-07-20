@@ -1,13 +1,15 @@
-# Map sticky bootstrap IP → hostname "server0" for join URLs that still use the name.
-# Import from agent / joining control-plane hosts when settings.bootstrapHost is an IPv4.
-{ lib, ... }:
+# Map sticky bootstrap IP → bootstrap hostname for join URLs that still use the name.
+# Import from agent / joining control-plane hosts when bootstrapHost is an IPv4.
+{
+  lib,
+  bootstrapHost,
+  bootstrapName ? "server0",
+}:
 let
-  settings = import ./settings.nix;
-  bootstrapIsIp =
-    builtins.match "[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+" settings.bootstrapHost != null;
+  bootstrapIsIp = builtins.match "[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+" bootstrapHost != null;
 in
 {
   networking.extraHosts = lib.mkIf bootstrapIsIp ''
-    ${settings.bootstrapHost} server0
+    ${bootstrapHost} ${bootstrapName}
   '';
 }

@@ -78,7 +78,7 @@ modules/                 # rke2nixos.* wrappers
 hosts/
   profiles/              # qemu, proxmox, bare-metal, iso
   example-*.nix          # QEMU/CI lab (lab token)
-  proxmox/               # sops-backed Proxmox hosts
+  proxmox/               # topology.nix → generated sops-backed hosts
   bare-metal/            # sops-backed metal hosts
 tests/                   # nixosTest QEMU suites (test token)
 secrets/                 # age.key (gitignored), rke2-token.enc.yaml
