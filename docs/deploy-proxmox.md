@@ -100,3 +100,7 @@ export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
 - Canal + kube-proxy Running (not CrashLoop from wrong CPU type)
 - Join via sticky `https://<bootstrapHost>:9345` without live `/etc/hosts` hacks
 - Shared sops token via cloud-init age key (non-empty `/var/lib/sops-nix/key.txt`)
+
+## Golden agent clones (optional)
+
+See [golden-agent.md](golden-agent.md) for `proxmox-golden-agent-qcow2` (one image → N workers via cidata identity).
