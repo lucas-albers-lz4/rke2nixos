@@ -137,4 +137,4 @@ pvesh create /storage …              # should fail
 ## Related
 
 - [deploy-proxmox.md](deploy-proxmox.md) — bake, age key, join order
-- [`hosts/proxmox/settings.nix`](../hosts/proxmox/settings.nix) — SSH keys + join URL
+- [`hosts/proxmox/topology.nix`](../hosts/proxmox/topology.nix) — SSH keys, VIP, node IPs (canonical)

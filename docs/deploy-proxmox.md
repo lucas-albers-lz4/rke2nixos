@@ -15,14 +15,16 @@ Then on your workstation, source the generated env file and use API import (see 
 
 ## 1. Bake images
 
-Edit [`hosts/proxmox/settings.nix`](../hosts/proxmox/settings.nix) **before** baking:
+Edit [`hosts/proxmox/topology.nix`](../hosts/proxmox/topology.nix) **before** baking (single source of truth):
 
 - `adminSshKeys` — root SSH public keys
-- `bootstrapHost` — break-glass join target (server0 static IP, currently `192.168.1.32`)
 - `clusterVip` — preferred join/API VIP (currently `192.168.1.29`)
-- `server0Ip` / `server1Ip` / `server2Ip` / `agent0Ip` — static ens18 addresses (Campaigns 1–3)
+- `nodes` — each CP/agent: `name`, `role`, `ip`, and for servers `bootstrap` + `vipPriority`
+- `bootstrapHost` — derived from the bootstrap server’s `ip` (break-glass join / tlsSan)
 
-When `bootstrapHost` is an IPv4, joining hosts (`agent0`, `server1`, `server2`) get `networking.extraHosts` mapping that IP → `server0`.
+Joining hosts get `networking.extraHosts` mapping that IP → the bootstrap hostname when `bootstrapHost` is an IPv4.
+
+**Before / after:** adding a CP or agent is one row in `nodes` + bake/deploy (no new host `.nix` file).
 
 ```bash
 nix build .#packages.x86_64-linux.proxmox-server0-qcow2 --out-link result-server-qcow
@@ -63,7 +65,7 @@ Proxmox 8.x storage upload accepts `iso` (not `snippets`) for least-privilege to
 
 ```bash
 # Optional first-boot ipconfig0 (ide2). Lab day-2 uses Nix static-address.nix instead;
-# keep these aligned with settings.nix if you still set Proxmox cloud-init net:
+# keep these aligned with topology.nix node IPs if you still set Proxmox cloud-init net:
 export PROXMOX_IPCONFIG_200='ip=192.168.1.32/24,gw=192.168.1.1'
 export PROXMOX_IPCONFIG_201='ip=192.168.1.25/24,gw=192.168.1.1'
 # Control-plane: override import default if needed

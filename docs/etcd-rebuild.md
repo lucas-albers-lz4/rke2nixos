@@ -3,7 +3,7 @@
 Once you run three servers, etcd quorum is real. Node replacement is not
 "reinstall and hope" — membership must be cleaned up from a surviving CP.
 
-Join URL: prefer cluster VIP (`settings.clusterVip`, currently `192.168.1.29`) when keepalived is enabled; sticky `bootstrapHost` (`settings.server0Ip`) remains break-glass. Avoid `192.168.1.20` on this LAN (conflicts with another device).
+Join URL: prefer cluster VIP (`clusterVip` in [`topology.nix`](../hosts/proxmox/topology.nix), currently `192.168.1.29`) when keepalived is enabled; sticky `bootstrapHost` (bootstrap CP IP) remains break-glass. Avoid `192.168.1.20` on this LAN (conflicts with another device).
 
 Control-plane guests use **static** ens18 addresses via [`hosts/proxmox/static-address.nix`](../hosts/proxmox/static-address.nix) (Campaign 1). Agent0 uses the same module at `settings.agent0Ip` (`.25`, Campaign 3). Do not rely on DHCP for CPs or lab agents.
 

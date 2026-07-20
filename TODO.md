@@ -43,16 +43,17 @@ Live R6 + addressing campaigns 1–3 complete. Next session: optional Campaign 4
 | VMID | Role | Node | MEM | ens18 IPv4 |
 |------|------|------|-----|------------|
 | 200 | server0 | L11 | 3072 | **static** `.32` |
-| 201 | agent0 | L11 | 2048 | **static** `.25` (`settings.agent0Ip`) |
+| 201 | agent0 | L11 | 2048 | **static** `.25` (topology) |
 | 202 | server1 | L7 | 3072 | **static** `.36` |
 | 203 | server2 | L8 | 3072 | **static** `.35` |
 
 **Hypervisors:** L11=`192.168.1.11`, L7=`.7`, L8=`.8`, L9=`.9` (spare). **L12** unused for lab.
 
-- Break-glass bootstrap: `192.168.1.32` (`bootstrapHost`)
+- Break-glass bootstrap: `192.168.1.32` (`bootstrapHost` from topology)
 - **Cluster VIP:** `192.168.1.29` (keepalived unicast)
 - Guest SSH (CPs): `root@192.168.1.{32,36,35}`
-- Inventory: [`hosts/proxmox/inventory.nix`](hosts/proxmox/inventory.nix)
+- Topology (canonical): [`hosts/proxmox/topology.nix`](hosts/proxmox/topology.nix)
+- Rolling inventory (derived): [`hosts/proxmox/inventory.nix`](hosts/proxmox/inventory.nix)
 
 ### Addressing campaigns (2026-07-19)
 
@@ -65,8 +66,7 @@ Live R6 + addressing campaigns 1–3 complete. Next session: optional Campaign 4
 
 ## Next runway
 
-Optional Campaign 4 (DHCP CP chaos), thin `upgrade-rke2` CLI / host generator / Cilium (Phase D).
-
+[#3](https://github.com/lucas-albers-lz4/rke2nixos/issues/3) Proxmox topology generator — **Done** (this tree). Next: [#4](https://github.com/lucas-albers-lz4/rke2nixos/issues/4) golden agent (design approved), optional Campaign 4, or Phase D / Cilium.
 
 ## Phase 2 / design Phase D (deferred — not on R1–R7 path)
 
@@ -75,8 +75,8 @@ Aligned with [docs/design/operating-model-and-upgrades.md](docs/design/operating
 - Cilium + `disable-kube-proxy` + HelmChartConfig
 - Raspberry Pi / `nixos-hardware`
 - `registries.yaml` helper
-- deploy-rs / colmena (optional; nixos-rebuild is enough for R7)
-- Mandatory host generation from a node list (optional generator may land earlier in Phase B)
+- deploy-rs / colmena (optional; nixos-rebuild is enough for R7) — see [#5](https://github.com/lucas-albers-lz4/rke2nixos/issues/5)
+- Proxmox topology generator — **Done** ([`hosts/proxmox/topology.nix`](hosts/proxmox/topology.nix)); bare-metal / example hosts still hand-written; mandatory richer generation remains Phase D
 - QEMU checks in Docker / GitHub-hosted CI
 
 **Moved earlier (design Phase B — before durable HA join):** VIP/LB for join URL (flake-declared); see design doc. Until then: sticky `bootstrapHost` + runbook; no production claim on sticky-host join.

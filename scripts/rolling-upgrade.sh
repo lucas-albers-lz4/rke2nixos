@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Rolling upgrade: cordon → drain → deploy-host.sh → wait Ready → uncordon.
-# Inventory: hosts/proxmox/inventory.nix (flake-adjacent, not a second SoT).
+# Inventory: hosts/proxmox/inventory.nix (derived from topology.nix — edit topology).
 #
 # Usage:
 #   ./scripts/rolling-upgrade.sh                  # all CPs then agents
