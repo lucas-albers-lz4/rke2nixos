@@ -155,4 +155,6 @@ Not on the R1–R7 critical path:
 
 ## License
 
-Same as your choice for this repository; RKE2 and nixpkgs retain their upstream licenses.
+Licensed under the [Apache License 2.0](LICENSE).
+
+RKE2, nixpkgs, and other dependencies retain their upstream licenses.
