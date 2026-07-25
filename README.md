@@ -23,18 +23,17 @@ Stand up **your** Proxmox 1 server + 1 agent cluster:
 Blank topology schema: [`hosts/proxmox/topology.example.nix`](hosts/proxmox/topology.example.nix).  
 Contributors testing on the reference Proxmox fleet: **[docs/lab.md](docs/lab.md)** (live [`hosts/proxmox/topology.nix`](hosts/proxmox/topology.nix) — do not overwrite casually).
 
-## Project runway (R0–R7 status)
+## What this gives you
 
-| Phase | What |
-|-------|------|
-| R0 | Flake, QEMU checks, Docker/CI toplevels |
-| R1 | sops-nix token ([`scripts/sops-bootstrap.sh`](scripts/sops-bootstrap.sh)) |
-| R2 | Interactive VM smoke ([docs/interactive-vms.md](docs/interactive-vms.md)) |
-| R3 | Baked qcow2 + ISO packages |
-| R4 | Host profiles: qemu / proxmox / bare-metal |
-| R5 | Live bring-up runbooks ([docs/deploy-proxmox.md](docs/deploy-proxmox.md), [docs/deploy-bare-metal.md](docs/deploy-bare-metal.md)) |
-| R6 | HA + etcd replace drill ([docs/etcd-rebuild.md](docs/etcd-rebuild.md)) |
-| R7 | Day-2 updates ([docs/day2-updates.md](docs/day2-updates.md), [`scripts/deploy-host.sh`](scripts/deploy-host.sh)) |
+After bring-up you can:
+
+- Grow to a **3-server** etcd quorum and practice replace drills ([docs/etcd-rebuild.md](docs/etcd-rebuild.md))
+- Apply day-2 OS/config updates without wiping RKE2 state ([docs/day2-updates.md](docs/day2-updates.md))
+- Optionally clone **golden agents** for extra workers ([docs/golden-agent.md](docs/golden-agent.md))
+
+Bare metal: [docs/deploy-bare-metal.md](docs/deploy-bare-metal.md). Deeper Proxmox detail: [docs/deploy-proxmox.md](docs/deploy-proxmox.md).
+
+Internal project status / deferred work for maintainers: [`TODO.md`](TODO.md).
 
 ## Developer quick start (flake / CI)
 
