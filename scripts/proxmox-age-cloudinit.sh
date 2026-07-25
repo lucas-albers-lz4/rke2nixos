@@ -4,8 +4,9 @@
 # Never bakes the key into the qcow2. Never writes the RKE2 token into cidata.
 #
 # Proxmox 8.x upload API accepts content=iso|vztmpl|import but NOT snippets, so
-# we ship user-data as a small cidata ISO on ide3. Sticky IPs use Proxmox's own
-# cloud-init drive (ide2) + ipconfig0 — not nocloud network-config.
+# we ship user-data as a small cidata ISO on ide3. Sticky IPs: embed nocloud
+# network-config in that ISO (cloud-init binds one seed; age ISO wins over
+# Proxmox ide2). Still set Proxmox ipconfig0 for UI parity.
 #
 #   ./scripts/proxmox-age-cloudinit.sh           # write local user-data only (age key)
 #   ./scripts/proxmox-age-cloudinit.sh 200 201  # build ISO, upload, attach
@@ -254,9 +255,37 @@ for vmid in "$@"; do
   cp "$ud" "$stage/user-data"
   cp "$meta" "$stage/meta-data"
 
+  # Embed static network in the age ISO (cloud-init seed). Dual cidata means
+  # Proxmox ide2 network-config is not applied when ide3 is chosen as seed.
+  ipcfg_var="PROXMOX_IPCONFIG_${vmid}"
+  has_net=0
+  if parse_ipconfig "${!ipcfg_var:-}"; then
+    has_net=1
+    cat >"$stage/network-config" <<EOF
+version: 2
+ethernets:
+  ens18:
+    match:
+      name: ens18
+    addresses:
+      - ${IPADDR}
+    routes:
+      - to: default
+        via: ${GW}
+    nameservers:
+      addresses:
+        - ${GW}
+EOF
+    echo "  nocloud network-config: ${IPADDR} gw=${GW}"
+  fi
+
   echo "Building cidata ISO for VM $vmid…"
   [[ -n "$hostname" ]] && echo "  hostname=$hostname join_url=$join_url"
-  if command -v cloud-localds >/dev/null 2>&1; then
+  # Prefer genisoimage/xorriso so network-config is always included when present.
+  # cloud-localds needs -N for network-config and is optional.
+  if [[ "$has_net" -eq 1 ]] && command -v cloud-localds >/dev/null 2>&1; then
+    cloud-localds -N "$stage/network-config" "$iso" "$stage/user-data" "$stage/meta-data"
+  elif [[ "$has_net" -eq 0 ]] && command -v cloud-localds >/dev/null 2>&1; then
     cloud-localds "$iso" "$stage/user-data" "$stage/meta-data"
   elif command -v genisoimage >/dev/null 2>&1 || command -v mkisofs >/dev/null 2>&1; then
     mkiso="$(command -v genisoimage || command -v mkisofs)"
@@ -284,16 +313,15 @@ for vmid in "$@"; do
   wait_task "$(echo "$up_json" | jq -r '.data // empty')"
 
   volid="${ISO_STORAGE}:iso/${remote_name}"
-  # ide3 = age cidata ISO; ide2 = Proxmox cloud-init drive for sticky ipconfig0
+  # ide3 = age cidata ISO (identity + network-config); ide2 mirrors ipconfig0 in UI
   args=(--data-urlencode "ide3=${volid},media=cdrom")
-  ipcfg_var="PROXMOX_IPCONFIG_${vmid}"
-  if parse_ipconfig "${!ipcfg_var:-}"; then
+  if [[ "$has_net" -eq 1 ]]; then
     args+=(
       --data-urlencode "ide2=${DISK_STORAGE}:cloudinit"
       --data-urlencode "ipconfig0=${!ipcfg_var}"
     )
     [[ -n "$GW" ]] && args+=(--data-urlencode "nameserver=${GW}")
-    echo "  Proxmox ipconfig0=${!ipcfg_var}"
+    echo "  Proxmox ipconfig0=${!ipcfg_var} (UI parity; seed network is in age ISO)"
   fi
 
   echo "Attaching age ISO on ide3 (+ optional Proxmox cloudinit IP) for VM $vmid ($vnode)…"

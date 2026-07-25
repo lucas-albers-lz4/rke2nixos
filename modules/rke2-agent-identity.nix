@@ -10,90 +10,110 @@ let
   cfg = config.rke2nixos.agent;
   enabled = cfg.enable && cfg.identityMode == "cloud-init";
 
-  identityScript = pkgs.writeShellScriptBin "rke2nixos-agent-identity" ''
-    set -euo pipefail
+  # writeShellApplication puts runtimeInputs on PATH — systemd's default PATH
+  # does not include /run/current-system/sw/bin, so bare `ip`/`tr`/`jq` fail.
+  identityScript = pkgs.writeShellApplication {
+    name = "rke2nixos-agent-identity";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.iproute2
+      pkgs.jq
+      pkgs.systemd
+    ];
+    text = ''
+      set -euo pipefail
 
-    JOIN_FILE=/run/rke2nixos/join-url
-    DEFAULT_JOIN=/etc/rke2nixos/default-join-url
-    NAME_FILE=/run/rke2nixos/node-name
-    RECORD=/var/lib/rke2nixos/identity-hostname
-    DROP_DIR=/etc/rancher/rke2/config.yaml.d
-    DROP_IN="$DROP_DIR/99-rke2nixos-identity.yaml"
-    IFACE="${cfg.identityInterface}"
-    NODE_PASSWORD=/etc/rancher/node/password
+      JOIN_FILE=/run/rke2nixos/join-url
+      DEFAULT_JOIN=/etc/rke2nixos/default-join-url
+      NAME_FILE=/run/rke2nixos/node-name
+      RECORD=/var/lib/rke2nixos/identity-hostname
+      DROP_DIR=/etc/rancher/rke2/config.yaml.d
+      DROP_IN="$DROP_DIR/99-rke2nixos-identity.yaml"
+      IFACE="${cfg.identityInterface}"
+      NODE_PASSWORD=/etc/rancher/node/password
 
-    log() { echo "rke2nixos-agent-identity: $*"; }
-    die() { log "ERROR: $*"; exit 1; }
+      log() { echo "rke2nixos-agent-identity: $*"; }
+      die() { log "ERROR: $*"; exit 1; }
 
-    if [[ -f "$JOIN_FILE" ]]; then
-      JOIN_URL="$(tr -d '[:space:]' <"$JOIN_FILE")"
-    elif [[ -f "$DEFAULT_JOIN" ]]; then
-      JOIN_URL="$(tr -d '[:space:]' <"$DEFAULT_JOIN")"
-      log "using bake-time default join URL from $DEFAULT_JOIN"
-    else
-      die "missing $JOIN_FILE (cidata must write join URL; never include a token)"
-    fi
-    [[ -n "$JOIN_URL" ]] || die "empty join URL"
-    case "$JOIN_URL" in
-      https://*) ;;
-      *) die "join URL must be https://… (got: $JOIN_URL)" ;;
-    esac
+      # Cidata write_files / hostname can land slightly after cloud-final.
+      for _ in $(seq 1 30); do
+        [[ -f "$JOIN_FILE" || -f "$DEFAULT_JOIN" ]] && [[ -f "$NAME_FILE" || -f /run/cloud-init/instance-data.json ]] && break
+        sleep 1
+      done
 
-    if [[ -f "$NAME_FILE" ]]; then
-      NODE_NAME="$(tr -d '[:space:]' <"$NAME_FILE")"
-    elif [[ -f /run/cloud-init/instance-data.json ]] && command -v jq >/dev/null 2>&1; then
-      NODE_NAME="$(jq -r '.v1.local_hostname // .ds.meta_data.local_hostname // empty' /run/cloud-init/instance-data.json 2>/dev/null || true)"
-    else
-      NODE_NAME=""
-    fi
-    [[ -n "$NODE_NAME" ]] || die "missing node name ($NAME_FILE or cloud-init local-hostname)"
-    NODE_NAME="$(echo "$NODE_NAME" | tr '[:upper:]' '[:lower:]')"
-    echo "$NODE_NAME" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?$' || die "invalid hostname: $NODE_NAME"
-
-    # Stale-disk guard: refuse to start if this disk previously joined as another node.
-    mkdir -p /var/lib/rke2nixos
-    if [[ -f "$NODE_PASSWORD" && -f "$RECORD" ]]; then
-      PREV="$(tr -d '[:space:]' <"$RECORD")"
-      if [[ -n "$PREV" && "$PREV" != "$NODE_NAME" ]]; then
-        die "stale agent state: disk was identity '$PREV' but cidata requests '$NODE_NAME'. Destroy/reclone the disk or wipe /var/lib/rancher/rke2 and /etc/rancher/node after kubectl delete node, then retry."
+      if [[ -f "$JOIN_FILE" ]]; then
+        JOIN_URL="$(tr -d '[:space:]' <"$JOIN_FILE")"
+      elif [[ -f "$DEFAULT_JOIN" ]]; then
+        JOIN_URL="$(tr -d '[:space:]' <"$DEFAULT_JOIN")"
+        log "using bake-time default join URL from $DEFAULT_JOIN"
+      else
+        die "missing $JOIN_FILE (cidata must write join URL; never include a token)"
       fi
-    fi
+      [[ -n "$JOIN_URL" ]] || die "empty join URL"
+      case "$JOIN_URL" in
+        https://*) ;;
+        *) die "join URL must be https://… (got: $JOIN_URL)" ;;
+      esac
 
-    # Resolve primary IPv4 on the lab virtio NIC (Proxmox ipconfig0).
-    NODE_IP=""
-    if command -v ip >/dev/null 2>&1; then
-      NODE_IP="$(ip -4 -o addr show dev "$IFACE" scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -1 || true)"
-    fi
-    [[ -n "$NODE_IP" ]] || die "no IPv4 on $IFACE (set Proxmox ipconfig0 / wait for network)"
+      if [[ -f "$NAME_FILE" ]]; then
+        NODE_NAME="$(tr -d '[:space:]' <"$NAME_FILE")"
+      elif [[ -f /run/cloud-init/instance-data.json ]]; then
+        NODE_NAME="$(jq -r '.v1.local_hostname // .ds.meta_data.local_hostname // empty' /run/cloud-init/instance-data.json 2>/dev/null || true)"
+      else
+        NODE_NAME=""
+      fi
+      [[ -n "$NODE_NAME" ]] || die "missing node name ($NAME_FILE or cloud-init local-hostname)"
+      NODE_NAME="$(echo "$NODE_NAME" | tr '[:upper:]' '[:lower:]')"
+      echo "$NODE_NAME" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?$' || die "invalid hostname: $NODE_NAME"
 
-    mkdir -p "$DROP_DIR"
-    cat >"$DROP_IN" <<EOF
+      # Stale-disk guard: refuse to start if this disk previously joined as another node.
+      mkdir -p /var/lib/rke2nixos
+      if [[ -f "$NODE_PASSWORD" && -f "$RECORD" ]]; then
+        PREV="$(tr -d '[:space:]' <"$RECORD")"
+        if [[ -n "$PREV" && "$PREV" != "$NODE_NAME" ]]; then
+          die "stale agent state: disk was identity '$PREV' but cidata requests '$NODE_NAME'. Destroy/reclone the disk or wipe /var/lib/rancher/rke2 and /etc/rancher/node after kubectl delete node, then retry."
+        fi
+      fi
+
+      # Resolve primary IPv4 on the lab virtio NIC (cidata network-config / ipconfig0).
+      # Retry briefly: network-online can race ahead of address assignment.
+      NODE_IP=""
+      for _ in $(seq 1 30); do
+        NODE_IP="$(ip -4 -o addr show dev "$IFACE" scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -1 || true)"
+        [[ -n "$NODE_IP" ]] && break
+        sleep 1
+      done
+      [[ -n "$NODE_IP" ]] || die "no IPv4 on $IFACE (set PROXMOX_IPCONFIG_* / wait for network)"
+
+      mkdir -p "$DROP_DIR"
+      cat >"$DROP_IN" <<EOF
 # Generated by rke2nixos-agent-identity — do not edit.
 node-name: $NODE_NAME
 node-ip: $NODE_IP
 server: $JOIN_URL
 EOF
-    chmod 0600 "$DROP_IN"
+      chmod 0600 "$DROP_IN"
 
-    if command -v hostnamectl >/dev/null 2>&1; then
-      hostnamectl set-hostname "$NODE_NAME"
-    else
-      echo "$NODE_NAME" >/etc/hostname
-      hostname "$NODE_NAME" 2>/dev/null || true
-    fi
+      # NixOS /etc/hostname is often immutable; prefer transient hostname.
+      if command -v hostnamectl >/dev/null 2>&1; then
+        hostnamectl set-hostname --transient "$NODE_NAME" 2>/dev/null \
+          || hostnamectl set-hostname "$NODE_NAME" 2>/dev/null \
+          || hostname "$NODE_NAME" 2>/dev/null \
+          || true
+      else
+        hostname "$NODE_NAME" 2>/dev/null || true
+      fi
 
-    echo "$NODE_NAME" >"$RECORD"
-    chmod 0644 "$RECORD"
-    log "identity ok name=$NODE_NAME ip=$NODE_IP server=$JOIN_URL"
-  '';
+      echo "$NODE_NAME" >"$RECORD"
+      chmod 0644 "$RECORD"
+      log "identity ok name=$NODE_NAME ip=$NODE_IP server=$JOIN_URL"
+    '';
+  };
 in
 {
   config = lib.mkIf enabled {
-    environment.systemPackages = [
-      identityScript
-      pkgs.jq
-      pkgs.iproute2
-    ];
+    environment.systemPackages = [ identityScript ];
 
     systemd.services.rke2nixos-agent-identity = {
       description = "rke2nixos golden agent identity drop-in";

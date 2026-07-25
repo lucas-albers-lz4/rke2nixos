@@ -66,7 +66,7 @@ Live R6 + addressing campaigns 1–3 complete. Next session: optional Campaign 4
 
 ## Next runway
 
-[#3](https://github.com/lucas-albers-lz4/rke2nixos/issues/3) topology + [#4](https://github.com/lucas-albers-lz4/rke2nixos/issues/4) golden agent — **Done** (this tree). Next: live golden clone PoC on Proxmox, optional Campaign 4, Phase D / Cilium, or [#5](https://github.com/lucas-albers-lz4/rke2nixos/issues/5) Colmena (YAGNI).
+[#3](https://github.com/lucas-albers-lz4/rke2nixos/issues/3) topology + [#4](https://github.com/lucas-albers-lz4/rke2nixos/issues/4) golden agent — **Done** (this tree). Live golden clone PoC on Proxmox — **Done** (2026-07-24: template 210, clone 211 → agent1 Ready at `.40`, topology register + decommission). **Rebake golden** after identity PATH/`hostnamectl` fix before next clone. Next: optional Campaign 4, Phase D / Cilium, or [#5](https://github.com/lucas-albers-lz4/rke2nixos/issues/5) Colmena (YAGNI).
 
 ## Phase 2 / design Phase D (deferred — not on R1–R7 path)
 

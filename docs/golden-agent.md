@@ -24,9 +24,21 @@ On control planes, configure the matching RKE2 agent-token if it differs from th
 
 ## Bake + import template
 
+Host Nix often lacks flakes; qcow2 bake also needs KVM. Prefer Docker Nix and copy the image out in the **same** run (container store is ephemeral):
+
 ```bash
-nix build .#packages.x86_64-linux.proxmox-golden-agent-qcow2 --out-link result-golden-agent
-./scripts/proxmox-import.sh ./result-golden-agent/nixos.qcow2 210 local-lvm rke2nixos-golden-template
+NIX_DOCKER_EXTRA_ARGS='--device /dev/kvm' ./scripts/nix-docker.sh bash -lc '
+  set -euo pipefail
+  mkdir -p /work/artifacts
+  nix build .#packages.x86_64-linux.proxmox-golden-agent-qcow2 --out-link /tmp/golden-out
+  f=$(find "$(readlink -f /tmp/golden-out)" -name "*.qcow2" | head -1)
+  cp -L "$f" /work/artifacts/proxmox-golden-agent.qcow2
+'
+
+# Or with host Nix (if flakes + nix-command enabled and /dev/kvm usable):
+# nix build .#packages.x86_64-linux.proxmox-golden-agent-qcow2 --out-link result-golden-agent
+
+./scripts/proxmox-import.sh ./artifacts/proxmox-golden-agent.qcow2 210 local-lvm rke2nixos-golden-template
 # Convert VM 210 to a template in the Proxmox UI (or leave as clone source).
 ```
 
@@ -43,6 +55,19 @@ export PROXMOX_IPCONFIG_211='ip=192.168.1.40/24,gw=192.168.1.1'
 ./scripts/proxmox-age-cloudinit.sh 211
 # Cold boot 211 → wait Ready
 ```
+
+`PROXMOX_IPCONFIG_*` is written into the age cidata ISO as nocloud `network-config`
+(and mirrored as Proxmox `ipconfig0` for the UI). Cloud-init binds a single seed;
+with both ide3 (age) and ide2 (Proxmox), the age ISO wins — so static IP must live
+in the age ISO or the guest falls back to DHCP.
+
+## Lab PoC notes (2026-07-24)
+
+- Template VMID `210` (`rke2nixos-golden-template`) left on L11 for reuse.
+- PoC clone `211` / `agent1` / `.40` joined Ready, then decommissioned.
+- Bugs found and fixed in-tree (rebake golden before next cold clone):
+  1. Dual cidata: embed `network-config` in age ISO (`proxmox-age-cloudinit.sh`).
+  2. Identity oneshot: use `writeShellApplication` runtime PATH (`ip`/`tr`); transient hostname on immutable `/etc/hostname`.
 
 ## Register for day-2
 
