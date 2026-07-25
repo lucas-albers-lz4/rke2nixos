@@ -2,6 +2,8 @@
 
 One Nix-built qcow2 (`proxmox-golden-agent-qcow2`); per-clone identity at first boot via cidata + Proxmox `ipconfig0`. Design: [issue #4](https://github.com/lucas-albers-lz4/rke2nixos/issues/4).
 
+**Start with named hosts first** ([getting-started.md](getting-started.md)). Golden clones scale **stateless workers** after a control plane exists. Lab template VMID **210** / rebake notes: [lab.md](lab.md) and § Lab PoC below.
+
 ## Constraints
 
 - **Agent-token only** in the image (`hosts/sops-agent-token.nix` → `secrets/rke2-agent-token.enc.yaml`). Never the server/cluster token module.

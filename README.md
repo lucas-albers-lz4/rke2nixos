@@ -14,7 +14,16 @@ nixpkgs already packages RKE2 and ships a full NixOS module (role, token, CNI, C
 
 It does **not** reimplement the RKE2 systemd unit.
 
-## Deploy runway (R0–R7)
+## Getting started
+
+Stand up **your** Proxmox 1 server + 1 agent cluster:
+
+→ **[docs/getting-started.md](docs/getting-started.md)** (`./scripts/init-cluster.sh`, topology, bake, import, age cidata)
+
+Blank topology schema: [`hosts/proxmox/topology.example.nix`](hosts/proxmox/topology.example.nix).  
+Contributors testing on the reference Proxmox fleet: **[docs/lab.md](docs/lab.md)** (live [`hosts/proxmox/topology.nix`](hosts/proxmox/topology.nix) — do not overwrite casually).
+
+## Project runway (R0–R7 status)
 
 | Phase | What |
 |-------|------|
@@ -27,7 +36,7 @@ It does **not** reimplement the RKE2 systemd unit.
 | R6 | HA + etcd replace drill ([docs/etcd-rebuild.md](docs/etcd-rebuild.md)) |
 | R7 | Day-2 updates ([docs/day2-updates.md](docs/day2-updates.md), [`scripts/deploy-host.sh`](scripts/deploy-host.sh)) |
 
-## Quick start
+## Developer quick start (flake / CI)
 
 Flakes need `nix-command` and `flakes` enabled. Prefer Nix-in-Docker for day-to-day work.
 
@@ -72,13 +81,15 @@ See [docs/interactive-vms.md](docs/interactive-vms.md) for multi-VM networking g
 ```
 flake.nix
 .sops.yaml
-scripts/                 # nix-docker, sops-bootstrap, deploy-host, proxmox-*, smoke-vms
+scripts/                 # init-cluster, nix-docker, sops-bootstrap, deploy-host, proxmox-*, smoke-vms
+docs/getting-started.md  # primary on-ramp for a new Proxmox cluster
+docs/lab.md              # author reference fleet (IPs / VMIDs)
 docs/proxmox-rbac.md     # least-privilege Proxmox role + API token
 modules/                 # rke2nixos.* wrappers
 hosts/
   profiles/              # qemu, proxmox, bare-metal, iso
   example-*.nix          # QEMU/CI lab (lab token)
-  proxmox/               # topology.nix → generated hosts; golden-agent.nix template
+  proxmox/               # topology.nix (live) + topology.example.nix; golden-agent.nix
   bare-metal/            # sops-backed metal hosts
 tests/                   # nixosTest QEMU suites (test token)
 secrets/                 # age.key (gitignored), rke2-token.enc.yaml
@@ -100,6 +111,7 @@ docs/                    # deploy, day-2, etcd, interactive VMs
 ## Secrets (sops-nix) — R1
 
 ```bash
+./scripts/init-cluster.sh            # preferred: sops + topology hints (lab-safe)
 ./scripts/sops-bootstrap.sh          # age key + encrypt secrets/rke2-token.enc.yaml
 ./scripts/sops-bootstrap.sh --rotate-token  # only before first real bootstrap
 ```

@@ -1,8 +1,11 @@
-# Deploy on Proxmox (R5)
+# Deploy on Proxmox
 
 Bake a qcow2, import it, attach the sops age key via cloud-init, join agents.
 
-## 0. Least-privilege Proxmox access (recommended)
+**New cluster?** Prefer the short path in [getting-started.md](getting-started.md).  
+**This repo’s reference fleet?** See [lab.md](lab.md) for hypervisor/VMID/IP map.
+
+## 0. Least-privilege Proxmox access (required for API import)
 
 Do **not** use cluster root for day-to-day deploy/test. Create a scoped role once:
 
@@ -18,13 +21,15 @@ Then on your workstation, source the generated env file and use API import (see 
 Edit [`hosts/proxmox/topology.nix`](../hosts/proxmox/topology.nix) **before** baking (single source of truth):
 
 - `adminSshKeys` — root SSH public keys
-- `clusterVip` — preferred join/API VIP (currently `192.168.1.29`)
+- `clusterVip` — preferred join/API VIP (or `""` to disable)
 - `nodes` — each CP/agent: `name`, `role`, `ip`, and for servers `bootstrap` + `vipPriority`
 - `bootstrapHost` — derived from the bootstrap server’s `ip` (break-glass join / tlsSan)
 
 Joining hosts get `networking.extraHosts` mapping that IP → the bootstrap hostname when `bootstrapHost` is an IPv4.
 
 **Before / after:** adding a CP or agent is one row in `nodes` + bake/deploy (no new host `.nix` file).
+
+Blank starting point: [`hosts/proxmox/topology.example.nix`](../hosts/proxmox/topology.example.nix) or `./scripts/init-cluster.sh`.
 
 ```bash
 nix build .#packages.x86_64-linux.proxmox-server0-qcow2 --out-link result-server-qcow
@@ -36,50 +41,41 @@ nix build .#packages.x86_64-linux.proxmox-agent0-qcow2 --out-link result-agent-q
 ```bash
 # API (laptop + token env). Defaults: memory=2048, cpu=host (required for x86-64-v2 / canal).
 # Pin the hypervisor with PROXMOX_NODE when spreading HA (see proxmox-rbac.md).
-./scripts/proxmox-import.sh ./result-server-qcow/nixos.qcow2 200 local-lvm rke2nixos-200
-./scripts/proxmox-import.sh ./result-agent-qcow/nixos.qcow2 201 local-lvm rke2nixos-201
+PROXMOX_MEMORY=3072 ./scripts/proxmox-import.sh ./result-server-qcow/nixos.qcow2 200 local-lvm rke2nixos-server0
+./scripts/proxmox-import.sh ./result-agent-qcow/nixos.qcow2 201 local-lvm rke2nixos-agent0
 ```
 
 Or pass a flake attr name and let the script build:
 
 ```bash
-PROXMOX_NODE=L11 PROXMOX_MEMORY=3072 ./scripts/proxmox-import.sh proxmox-server0-qcow2 200
-PROXMOX_NODE=L11 ./scripts/proxmox-import.sh proxmox-agent0-qcow2 201
-
-# HA control-planes (R6): L7 / L8 — verify free RAM first (other guests may already use ~8–9 GiB)
-PROXMOX_NODE=L7 PROXMOX_MEMORY=3072 ./scripts/proxmox-import.sh proxmox-server1-qcow2 202
-PROXMOX_NODE=L8 PROXMOX_MEMORY=3072 ./scripts/proxmox-import.sh proxmox-server2-qcow2 203
+PROXMOX_MEMORY=3072 ./scripts/proxmox-import.sh proxmox-server0-qcow2 200
+./scripts/proxmox-import.sh proxmox-agent0-qcow2 201
 ```
-
-Lab hypervisors: **L11**, **L7**, **L8**, **L9** (`rke2ops@192.168.1.{11,7,8,9}`). **L12** is unused for this lab (insufficient memory).
 
 Do **not** use default `kvm64` CPU — glibc in RKE2 images needs x86-64-v2 (`cpu=host` is set by the import script).
 
-Lab memory default is **2 GiB** per VM so two guests fit a small hypervisor. Control-plane requests alone are ~1.8 GiB; at 2 GiB the node often stays **NotReady** (controller-manager / canal cannot schedule). Prefer **≥3 GiB for server0** and 2 GiB for agents (total under 8 GiB), or free other host VMs first.
+Import default memory is **2 GiB**. Control-plane requests alone are ~1.8 GiB; at 2 GiB the node often stays **NotReady**. Prefer **≥3 GiB for control planes** and 2 GiB for agents.
 
 ## 3. Age key on first boot (cloud-init cidata ISO)
 
 sops-nix expects `/var/lib/sops-nix/key.txt` (contents of `secrets/age.key`). **Never bake the key into the qcow2.**
 
-Proxmox 8.x storage upload accepts `iso` (not `snippets`) for least-privilege tokens, so the helper builds a small **nocloud CIDATA** ISO (age `write_files` only) and attaches it as `ide3`. Sticky IPs use Proxmox's own cloud-init drive (`ide2` + `ipconfig0`):
+Proxmox 8.x storage upload accepts `iso` (not `snippets`) for least-privilege tokens, so the helper builds a small **nocloud CIDATA** ISO and attaches it as `ide3`.
+
+**Named hosts** (topology + `static-address.nix`): networking is Nix-owned. Attach age only:
 
 ```bash
-# Optional first-boot ipconfig0 (ide2). Lab day-2 uses Nix static-address.nix instead;
-# keep these aligned with topology.nix node IPs if you still set Proxmox cloud-init net:
-export PROXMOX_IPCONFIG_200='ip=192.168.1.32/24,gw=192.168.1.1'
-export PROXMOX_IPCONFIG_201='ip=192.168.1.25/24,gw=192.168.1.1'
-# Control-plane: override import default if needed
-# PROXMOX_MEMORY=3072 ./scripts/proxmox-import.sh …
-
 ./scripts/proxmox-age-cloudinit.sh 200 201
 ```
 
-Requires `genisoimage` / `mkisofs` / `xorriso` / `cloud-localds` on the workstation. Attach **before** first start (or stop + cold boot after attach). Do not put `network-config` in the age ISO — that fights NixOS networkd.
+**Golden agent clones:** set `PROXMOX_HOSTNAME_<vmid>`, optional join URL, and `PROXMOX_IPCONFIG_<vmid>` — the script embeds static `network-config` in the age ISO (cloud-init binds one cidata seed). See [golden-agent.md](golden-agent.md).
+
+Requires `genisoimage` / `mkisofs` / `xorriso` / `cloud-localds` on the workstation. Attach **before** first start (or stop + cold boot after attach).
 
 ## 4. Bring-up order
 
-1. Start **server0** (VM 200); wait for SSH, `rke2-server` active, and `/run/secrets/rke2-token` (proves age + sops).
-2. Start **agent0** (VM 201). With sticky `bootstrapHost` baked in, it joins on first boot — no flake edit / re-bake between steps.
+1. Start **server0**; wait for SSH, `rke2-server` active, and `/run/secrets/rke2-token` (proves age + sops).
+2. Start **agent0**. With topology `joinUrl` / VIP baked in, it joins on first boot — no flake edit / re-bake between steps for a fixed topology.
 3. Confirm both Ready:
 
 ```bash
@@ -94,13 +90,13 @@ export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
 - NixOS generations are immutable closures
 - RKE2 state stays under `/var/lib/rancher/rke2` across rebuilds — do not wipe it on day-2 updates
 
-## Success criteria (R5)
+## Success criteria
 
 - server0 + agent0 Ready on Proxmox
 - Canal + kube-proxy Running (not CrashLoop from wrong CPU type)
-- Join via sticky `https://<bootstrapHost>:9345` without live `/etc/hosts` hacks
+- Join via `https://<clusterVip|:bootstrapHost>:9345`
 - Shared sops token via cloud-init age key (non-empty `/var/lib/sops-nix/key.txt`)
 
 ## Golden agent clones (optional)
 
-See [golden-agent.md](golden-agent.md) for `proxmox-golden-agent-qcow2` (one image → N workers via cidata identity).
+See [golden-agent.md](golden-agent.md) for `proxmox-golden-agent-qcow2` (one image → N workers via cidata identity). Start with named 1+1 from [getting-started.md](getting-started.md) first.
