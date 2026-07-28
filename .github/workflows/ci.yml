@@ -86,11 +86,12 @@ jobs:
       - name: Check markdown links
         uses: lycheeverse/lychee-action@v2
         with:
+          # Exclude .github (workflow/action URLs) via --exclude-path; '!.github'
+          # is not valid lychee input and fails with "Cannot parse inputs".
           args: >-
             --include-fragments
-            --no-ignore
             --format markdown
+            --exclude-path .github
             .
-            '!.github'
           fail: true
           jobSummary: true
