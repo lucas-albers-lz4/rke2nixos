@@ -32,7 +32,7 @@ Canonical draft (revised after [issue #1](https://github.com/lucas-albers-lz4/rk
 
 **Locked decisions (summary):** `nixpkgs-rke2` flake input as the RKE2 pin; VIP/LB in Phase B; rolling = scripted inventory; SSH first-class.
 
-**Phase B status (2026-07-19):** `nixpkgs-rke2` landed; CI lockfile guard; `rolling-upgrade.sh`; live pin deploy; VIP `192.168.1.29`; live R6 + etcd drill Done.
+**Phase B status:** see the [operating model & design doc](docs/design/operating-model-and-upgrades.md) for the canonical phase breakdown and live status. Key Phase B items (`nixpkgs-rke2`, rolling upgrade, VIP) are verified live.
 
 ## Lab status (stop here 2026-07-19)
 

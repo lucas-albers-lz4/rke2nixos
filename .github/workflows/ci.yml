@@ -82,3 +82,16 @@ jobs:
           name: installer-iso-zst
           path: artifact-iso
           if-no-files-found: error
+
+      - name: Check markdown links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # Exclude .github (workflow/action URLs) via --exclude-path; '!.github'
+          # is not valid lychee input and fails with "Cannot parse inputs".
+          args: >-
+            --include-fragments
+            --format markdown
+            --exclude-path .github
+            .
+          fail: true
+          jobSummary: true
