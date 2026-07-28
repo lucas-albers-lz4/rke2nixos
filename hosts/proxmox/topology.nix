@@ -48,7 +48,7 @@ in
   gateway = "192.168.1.1";
 
   adminSshKeys = [
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILjCUGV97GhdCgKFTpu4PzjF0BS/7c8OXbUDsHCoBnzx lalbers@lalbers-X470-AORUS-ULTRA-GAMING"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILjCUGV97GhdCgKFTpu4PzjF0BS/7c8OXbUDsHCoBnzx lalbers@workstation"
   ];
 
   inherit nodes servers;
