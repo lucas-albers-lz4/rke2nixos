@@ -12,7 +12,7 @@ jobs:
   eval-and-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -36,7 +36,7 @@ jobs:
         run: nix build .#packages.x86_64-linux.example-server0 --print-build-logs
 
       - name: Upload example-server0
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: example-server0-toplevel
           path: result
@@ -46,7 +46,7 @@ jobs:
         run: nix build .#packages.x86_64-linux.example-agent0 --out-link result-agent --print-build-logs
 
       - name: Upload example-agent0
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: example-agent0-toplevel
           path: result-agent
@@ -62,7 +62,7 @@ jobs:
           zstd -T0 -19 -o artifact-qcow/proxmox-server0.qcow2.zst result-server-qcow/*.qcow2
 
       - name: Upload proxmox-server0-qcow2
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: proxmox-server0-qcow2-zst
           path: artifact-qcow
@@ -77,7 +77,7 @@ jobs:
           zstd -T0 -19 -o artifact-iso/installer.iso.zst result-iso/iso/*.iso
 
       - name: Upload installer-iso
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: installer-iso-zst
           path: artifact-iso
