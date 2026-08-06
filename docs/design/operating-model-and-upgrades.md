@@ -2,7 +2,7 @@
 
 **Status:** Draft revised after multi-model review ([issue #1](https://github.com/lucas-albers-lz4/rke2nixos/issues/1))  
 **Audience:** Maintainers and external reviewers (NixOS, Kubernetes, platform)  
-**Related:** [../TODO.md](../TODO.md), [../day2-updates.md](../day2-updates.md), [../etcd-rebuild.md](../etcd-rebuild.md), [../README.md](../README.md)  
+**Related:** [../../TODO.md](../../TODO.md), [../day2-updates.md](../day2-updates.md), [../etcd-rebuild.md](../etcd-rebuild.md), [../../README.md](../../README.md)  
 **Non-goal of this doc:** Implement VIP, Cilium, or HA live bring-up in *this* revision — those are downstream workstreams constrained by the principles below. Pin shape is **decided here**; the `nixpkgs-rke2` input lands in a follow-on implementation PR.
 
 ---
@@ -74,7 +74,7 @@ Secrets **wiring** (sops-nix paths, tokenFile, unit dependencies) is declarative
 
 Live confidence order matters more than feature breadth: 1+1 Ready → day-2 no-wipe → 3 CP + etcd drill → then Phase 2 (Cilium, Pi, etc.). Scaffolding without live proof stays labeled scaffolding.
 
-**Status note:** Proxmox 1+1 Ready, day-2 no-wipe, and live R6 (3 CP + etcd drill) are done (see [TODO.md](../TODO.md)).
+**Status note:** Proxmox 1+1 Ready, day-2 no-wipe, and live R6 (3 CP + etcd drill) are done (see [TODO.md](../../TODO.md)).
 
 ### P9 — Explicit non-goals (for this phase of the project)
 
@@ -330,7 +330,7 @@ We are not trying to win the Talos column. We are trying to be the best **Nix-na
 1. Principles P1–P9 are clear enough to accept or amend (including P1 multi-input clarification and P3 CLI guardrail).  
 2. Upgrade model is understood: pin independence via `nixpkgs-rke2` + Nix apply; mechanism decided even if not yet in-tree.  
 3. Anti-designs in §6.5 are agreed or explicitly replaced.  
-4. Phases A–D (with VIP in B, Cilium in D) are a sane backlog order relative to [TODO.md](../TODO.md).  
+4. Phases A–D (with VIP in B, Cilium in D) are a sane backlog order relative to [TODO.md](../../TODO.md).  
 5. Open questions in §12 are resolved.
 
 **Implementation succeeds when:**
